@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from .basics import SpectralConv2D
-from .utils import _get_act, add_padding2, remove_padding2
+from .utils import _get_act, add_padding2, remove_padding2, get_grid2d
 
 class FNO2d(nn.Module):
     def __init__(self, modes1, modes2,
@@ -35,7 +35,7 @@ class FNO2d(nn.Module):
             self.layers = [width] * (len(modes1) + 1)
         else:
             self.layers = layers
-        self.fc0 = nn.Linear(in_dim, layers[0])
+        self.fc0 = nn.Linear(in_dim, self.layers[0])
 
         self.sp_convs = nn.ModuleList([SpectralConv2D(
             in_size, out_size, mode1_num, mode2_num)
@@ -45,19 +45,25 @@ class FNO2d(nn.Module):
         self.ws = nn.ModuleList([nn.Conv1d(in_size, out_size, 1)
                                  for in_size, out_size in zip(self.layers, self.layers[1:])])
 
-        self.fc1 = nn.Linear(layers[-1], fc_dim)
-        self.fc2 = nn.Linear(fc_dim, layers[-1])
-        self.fc3 = nn.Linear(layers[-1], out_dim)
+        self.fc1 = nn.Linear(self.layers[-1], fc_dim)
+        self.fc2 = nn.Linear(fc_dim, self.layers[-1])
+        self.fc3 = nn.Linear(self.layers[-1], out_dim)
         self.act = _get_act(act)
     
     def forward(self, x):
         '''
         Args:
-            - x : (batch size, x_grid, y_grid, 2)
+            - x : (batch_size, canali, size_x, size_y) <-- ORA ACCETTA IL FORMATO PYTORCH STANDARD
         Returns:
-            - x: (batch size, x_grid, y_grid, 1)
+            - x: (batch_size, out_dim, size_x, size_y)
         '''
-        size_1, size_2 = x.shape[1], x.shape[2]
+
+        grid = get_grid2d(x.shape, x.device)
+
+        x = torch.cat((x, grid), dim=1)
+
+        size_1, size_2 = x.shape[2], x.shape[3]
+
         if max(self.pad_ratio) > 0:
             num_pad1 = [round(i * size_1) for i in self.pad_ratio]
             num_pad2 = [round(i * size_2) for i in self.pad_ratio]
@@ -66,6 +72,7 @@ class FNO2d(nn.Module):
 
         length = len(self.ws)
         batchsize = x.shape[0]
+        x = x.permute(0, 2, 3, 1) #[B, X, Y, C] for Linear Layer
         x = self.fc0(x)
         x = x.permute(0, 3, 1, 2)   # B, C, X, Y
         x = add_padding2(x, num_pad1, num_pad2)
@@ -78,10 +85,14 @@ class FNO2d(nn.Module):
             if i != length - 1:
                 x = self.act(x)
         x = remove_padding2(x, num_pad1, num_pad2)
+
         x = x.permute(0, 2, 3, 1)
         x = self.fc1(x)
         x = self.act(x)
         x = self.fc2(x)
         x = self.act(x)
         x = self.fc3(x)
+
+        x = x.permute(0, 3, 1, 2)
         return x
+    

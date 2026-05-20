@@ -1,5 +1,7 @@
 import torch
 import torch.nn.functional as F
+import random
+import numpy as np
 
 def _get_act(act):
     if act == 'tanh':
@@ -40,3 +42,15 @@ def get_grid2d(shape, device):
     gridy = torch.linspace(0, 1, size_y, dtype=torch.float)
     gridy = gridy.reshape(1, 1, 1, size_y).repeat([batchsize, 1, size_x, 1])
     return torch.cat((gridx, gridy), dim=1).to(device)
+
+
+
+def set_seed(seed=42):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+    
