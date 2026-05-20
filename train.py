@@ -8,7 +8,7 @@ from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno import FNO2d
 from models.losses import PILoss
 from models.utils import set_seed
-from visualize.plot import save_predictions
+from visualize.plot import save_predictions, plot_loss_history
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     model.train()
@@ -70,6 +70,8 @@ def main(args):
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Starting training on device: {device}")
 
+    history_loss = {"train": [], "val": [], "data": [], "phys": [], "val_data": [], "val_phys": []}
+
     print("Loading Mock Dataset...")
     train_dataset = MockGalaxyDatacubeDataset(
         num_samples=args.num_samples, 
@@ -119,9 +121,16 @@ def main(args):
         tot_loss, data_loss, phys_loss = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch)
         val_tot, val_data, val_phys = evaluate_model(model, val_dataloader, criterion, device)
         print(f"Epoch [{epoch}/{args.epochs}] | "
-              f"Train Loss: {tot_loss:.5f} (Data: {data_loss:.5f} | Phys: {phys_loss:.5f})|"
+              f"Train Loss: {tot_loss:.5f} (Data: {data_loss:.5f} | Phys: {phys_loss:.5f}) | "
               f"Val Loss: {val_tot:.5f} (Data: {val_data:.5f} | Phys: {val_phys:.5f})")
         
+        history_loss["train"].append(tot_loss)
+        history_loss["val"].append(val_tot)
+        history_loss["data"].append(data_loss)
+        history_loss["phys"].append(phys_loss)
+        history_loss["val_data"].append(val_data)
+        history_loss["val_phys"].append(val_phys)
+
         if val_tot < best_val_loss:
             best_val_loss = val_tot
             torch.save(model.state_dict(), best_model_path)
@@ -135,12 +144,14 @@ def main(args):
             
             save_predictions(sample_dirty, sample_clean, sample_pred, 
                              epoch, tot_loss, data_loss, phys_loss)
+    
+    plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results/loss_history.png")
 
     print("\nTraining Completed!")
     print("\n" + "="*50)
     print("Evaluating best model on test set...")
 
-    model.load_state_dict(torch.load(best_model_path), weights_only=True)
+    model.load_state_dict(torch.load(best_model_path, weights_only=True))
     test_tot, test_data, test_phys = evaluate_model(model, test_dataloader, criterion, device)
 
     print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f})")
