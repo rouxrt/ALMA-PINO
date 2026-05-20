@@ -35,8 +35,8 @@ def remove_padding2(x, num_pad1, num_pad2):
 
 def get_grid2d(shape, device):
     batchsize, size_x, size_y = shape[0], shape[2], shape[3]
-    gridx = torch.tensor(torch.linspace(0, 1, size_x), dtype=torch.float)
+    gridx = torch.linspace(0, 1, size_x, dtype=torch.float)
     gridx = gridx.reshape(1, 1, size_x, 1).repeat([batchsize, 1, 1, size_y])
-    gridy = torch.tensor(torch.linspace(0, 1, size_y), dtype=torch.float)
+    gridy = torch.linspace(0, 1, size_y, dtype=torch.float)
     gridy = gridy.reshape(1, 1, 1, size_y).repeat([batchsize, 1, size_x, 1])
     return torch.cat((gridx, gridy), dim=1).to(device)
