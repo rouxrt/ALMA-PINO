@@ -4,12 +4,12 @@ import math
 import matplotlib.pyplot as plt
 
 class MockGalaxyDatacubeDataset(Dataset):
-    def __init__(self, num_samples=100, channels=16, size=32, base_sigma_psf=2.5, point_source = True):
+    def __init__(self, num_samples=100, channels=16, size=32, base_sigma_psf=2.5, extended_source = False):
         super().__init__()
         self.num_samples = num_samples
         self.channels = channels
         self.size = size
-        self.point_source = point_source
+        self.extended_source = extended_source
         
         #  PSF narrows at higher frequencies
         psfs = []
@@ -48,7 +48,7 @@ class MockGalaxyDatacubeDataset(Dataset):
         for c in range(self.channels):
             spectral_intensity = math.exp(-((c - self.channels//2)**2) / 8.0)
             
-            if self.point_source:
+            if not self.extended_source:
                 clean_image[c, center_x, center_y] = spectral_intensity
             else:
                 galaxy_blob = self._create_gaussian_2d(self.size, sigma=1.2, center_x=center_x, center_y=center_y)
