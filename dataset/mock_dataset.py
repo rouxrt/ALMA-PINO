@@ -81,8 +81,13 @@ class MockGalaxyDatacubeDataset(Dataset):
         clean_fft = torch.fft.rfft2(clean_image)
         dirty_fft = clean_fft * self.psf_fft
         dirty_image = torch.fft.irfft2(dirty_fft, s=(self.size, self.size))
+
+        target_snr = 10.0 
+
+        signal_peak = dirty_image.max().clamp(min=1e-8)
+        noise_sigma = signal_peak / target_snr
         
-        noise = torch.randn_like(dirty_image) * 0.005
+        noise = torch.randn_like(dirty_image) * noise_sigma
         dirty_image = dirty_image + noise
 
         return dirty_image, clean_image, self.psf
