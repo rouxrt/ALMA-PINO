@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
 import os
+import sys
 
-import matplotlib.pyplot as plt
-import os
 
 def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, output_dir="results"):
     os.makedirs(output_dir, exist_ok=True)
@@ -19,12 +18,13 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
                  fontsize=14, fontweight='bold')
     
     vmax_dirty = img_dirty.max()
+    vmax_clean = img_clean.max()
     
-    im0 = axes[0].imshow(img_dirty, cmap='magma', vmin=0, vmax=vmax_dirty)
+    im0 = axes[0].imshow(img_dirty, cmap='magma', vmin=0, vmax=vmax_clean)
     axes[0].set_title('Dirty Image (Input)')
     axes[0].axis('off')
     
-    vmax_clean = img_clean.max()
+    
 
     im1 = axes[1].imshow(img_pred, cmap='magma', vmin=0, vmax=vmax_clean)
     axes[1].set_title('PI-FNO Prediction')
@@ -37,6 +37,37 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
     plt.tight_layout()
     plt.savefig(os.path.join(output_dir, f'epoch_{epoch:03d}_prediction.png'), dpi=150)
     plt.close() 
+
+def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
+    os.makedirs(output_dir, exist_ok=True)
+
+    for c in range(dirty.shape[1]):
+        img_dirty = dirty[0, c].detach().cpu().numpy()
+        img_clean = clean[0, c].detach().cpu().numpy()
+        img_pred = pred[0, c].detach().cpu().numpy()
+
+        vmin = min(img_dirty.min(), img_clean.min(), img_pred.min())
+        vmax = max(img_dirty.max(), img_clean.max(), img_pred.max())
+
+        fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+        
+        im0 = axes[0].imshow(img_dirty, cmap='magma', origin='lower', vmin=0, vmax=vmax)
+        axes[0].set_title(f'Dirty Image - Canale {c}')
+        axes[0].axis('off')
+        
+        im1 = axes[1].imshow(img_pred, cmap='magma', origin='lower', vmin=0, vmax=vmax)
+        axes[1].set_title(f'PI-FNO Prediction - Canale {c}')
+        axes[1].axis('off')
+        
+        im2 = axes[2].imshow(img_clean, cmap='magma', origin='lower', vmin=0, vmax=vmax)
+        axes[2].set_title(f'Ground Truth (Clean) - Canale {c}')
+        axes[2].axis('off')
+
+        fig.colorbar(im2, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
+        
+        plt.savefig(os.path.join(output_dir, f'channel_{c:02d}.png'), dpi=150)
+        plt.close()
+
 
 def plot_loss_history(history: dict, title: str, save_path: str):
 
@@ -70,3 +101,4 @@ def plot_loss_history(history: dict, title: str, save_path: str):
     plt.tight_layout()
     plt.savefig(save_path, dpi=150)
     plt.close()
+
