@@ -15,7 +15,7 @@ class MockGalaxyDatacubeDataset(Dataset):
         psfs = []
         for c in range(channels):
             # reducing radius of PSF as we go up in channels
-            current_sigma = base_sigma_psf * (1.0 - 0.02 * c)
+            current_sigma = max(0.5, base_sigma_psf * (1.0 - 0.015 * c))
             psfs.append(self._create_gaussian_2d(size, current_sigma))
             
         self.psf = torch.stack(psfs, dim=0) # Shape: [16, 32, 32]
