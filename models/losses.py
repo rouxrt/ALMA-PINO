@@ -11,8 +11,8 @@ class PILoss(nn.Module):
         super().__init__()
         self.lambda_data = lambda_data
         self.lambda_phys = lambda_phys
-        self.mse = nn.MSELoss()
-        self.mae = nn.L1Loss()
+        self.mse = nn.MSELoss(reduction='sum')
+        self.mae = nn.L1Loss(reduction='sum')
 
     def forward(self, pred_clean, dirty_image, clean_gt, psf):
         """
