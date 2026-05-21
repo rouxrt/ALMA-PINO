@@ -8,7 +8,7 @@ from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno import FNO2d
 from models.losses import PILoss
 from models.utils import set_seed
-from visualize.plot import save_predictions, plot_loss_history
+from visualize.plot import save_predictions, plot_loss_history, visualize_datacube
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     model.train()
@@ -29,6 +29,8 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
 
         loss_total.backward()
 
+        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
         optimizer.step()
 
         running_total_loss += loss_total.item()
@@ -40,7 +42,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
             running_data_loss / num_batches, 
             running_phys_loss / num_batches)
 
-def evaluate_model(model, dataloader, criterion, device):
+def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     model.eval() 
     running_total_loss = 0.0
     running_data_loss = 0.0
@@ -53,6 +55,9 @@ def evaluate_model(model, dataloader, criterion, device):
             psf = psf.to(device)
 
             pred_clean = model(dirty)
+            if show_datacube:
+                visualize_datacube(dirty, clean, pred_clean)
+                show_datacube = False
             loss_total, loss_data, loss_phys = criterion(pred_clean, dirty, clean, psf)
 
             running_total_loss += loss_total.item()
@@ -114,6 +119,8 @@ def main(args):
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'best_model.pth')
 
+    fixed_val_batch = next(iter(val_dataloader))
+
 
     print("Starting training loop...\n")
     for epoch in range(1, args.epochs + 1):
@@ -152,7 +159,7 @@ def main(args):
     print("Evaluating best model on test set...")
 
     model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    test_tot, test_data, test_phys = evaluate_model(model, test_dataloader, criterion, device)
+    test_tot, test_data, test_phys = evaluate_model(model, test_dataloader, criterion, device, show_datacube=True)
 
     print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f})")
 

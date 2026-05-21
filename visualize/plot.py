@@ -17,49 +17,51 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
     fig.suptitle(f'Epoca {epoch} | Loss Tot: {tot_loss:.5f} | Data (MSE): {data_loss:.5f} | Phys: {phys_loss:.5f}', 
                  fontsize=14, fontweight='bold')
     
-    vmax_dirty = img_dirty.max()
-    vmax_clean = img_clean.max()
+    global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
+    global_vmax = max(dirty[0].max(), clean[0].max(), pred[0].max()).item()
     
-    im0 = axes[0].imshow(img_dirty, cmap='magma', vmin=0, vmax=vmax_clean)
+    im0 = axes[0].imshow(img_dirty, cmap='magma', vmin=global_vmin, vmax=global_vmax)
     axes[0].set_title('Dirty Image (Input)')
     axes[0].axis('off')
     
     
 
-    im1 = axes[1].imshow(img_pred, cmap='magma', vmin=0, vmax=vmax_clean)
+    im1 = axes[1].imshow(img_pred, cmap='magma', vmin=global_vmin, vmax=global_vmax)
     axes[1].set_title('PI-FNO Prediction')
     axes[1].axis('off')
     
-    im2 = axes[2].imshow(img_clean, cmap='magma', vmin=0, vmax=vmax_clean)
+    im2 = axes[2].imshow(img_clean, cmap='magma', vmin=global_vmin, vmax=global_vmax)
     axes[2].set_title('Ground Truth (Clean)')
     axes[2].axis('off')
     
-    plt.tight_layout()
+    fig.colorbar(im2, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
+
     plt.savefig(os.path.join(output_dir, f'epoch_{epoch:03d}_prediction.png'), dpi=150)
     plt.close() 
 
 def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
     os.makedirs(output_dir, exist_ok=True)
 
+    global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
+    global_vmax = max(dirty[0].max(), clean[0].max(), pred[0].max()).item()
+
     for c in range(dirty.shape[1]):
         img_dirty = dirty[0, c].detach().cpu().numpy()
         img_clean = clean[0, c].detach().cpu().numpy()
         img_pred = pred[0, c].detach().cpu().numpy()
 
-        vmin = min(img_dirty.min(), img_clean.min(), img_pred.min())
-        vmax = max(img_dirty.max(), img_clean.max(), img_pred.max())
 
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         
-        im0 = axes[0].imshow(img_dirty, cmap='magma', origin='lower', vmin=0, vmax=vmax)
+        im0 = axes[0].imshow(img_dirty, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
         axes[0].set_title(f'Dirty Image - Canale {c}')
         axes[0].axis('off')
         
-        im1 = axes[1].imshow(img_pred, cmap='magma', origin='lower', vmin=0, vmax=vmax)
+        im1 = axes[1].imshow(img_pred, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
         axes[1].set_title(f'PI-FNO Prediction - Canale {c}')
         axes[1].axis('off')
         
-        im2 = axes[2].imshow(img_clean, cmap='magma', origin='lower', vmin=0, vmax=vmax)
+        im2 = axes[2].imshow(img_clean, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
         axes[2].set_title(f'Ground Truth (Clean) - Canale {c}')
         axes[2].axis('off')
 
