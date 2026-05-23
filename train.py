@@ -1,4 +1,5 @@
 import argparse
+import sys
 import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
@@ -7,8 +8,10 @@ import os
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno import FNO2d
 from models.losses import PILoss
-from models.utils import set_seed
+from models.utils import Logger, set_seed
 from visualize.plot import save_predictions, plot_loss_history, visualize_datacube
+from torchmetrics.functional.image import peak_signal_noise_ratio as psnr
+from torchmetrics.functional.image import structural_similarity_index_measure as ssim
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
     model.train()
@@ -24,6 +27,11 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
         optimizer.zero_grad()
 
         pred_clean = model(dirty)
+
+        if epoch % 10 == 0 and batch_idx == 0:
+            min_val = pred_clean.min().item()
+            neg_percent = (pred_clean < 0).float().mean().item() * 100
+            print(f"  [Debug] Min value: {min_val:.6f} | Negative pixels: {neg_percent:.1f}%")
 
         loss_total, loss_data, loss_phys = criterion(pred_clean, dirty, clean, psf)
 
@@ -47,6 +55,9 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     running_total_loss = 0.0
     running_data_loss = 0.0
     running_phys_loss = 0.0
+    running_psnr = 0.0
+    running_ssim = 0.0
+    running_flux_error = 0.0
 
     with torch.no_grad(): 
         for dirty, clean, psf in dataloader:
@@ -54,7 +65,10 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             clean = clean.to(device)
             psf = psf.to(device)
 
-            pred_clean = model(dirty)
+            raw_pred = model(dirty)
+
+            pred_clean = torch.clamp(raw_pred, min=0.0)
+
             if show_datacube:
                 visualize_datacube(dirty, clean, pred_clean)
                 show_datacube = False
@@ -64,13 +78,29 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             running_data_loss += loss_data.item()
             running_phys_loss += loss_phys.item()
 
+            batch_max = clean.max().item()
+            if batch_max > 0:
+                batch_psnr = psnr(pred_clean, clean, data_range=batch_max)
+                batch_ssim = ssim(pred_clean, clean, data_range=batch_max)
+                running_psnr += batch_psnr.item()
+                running_ssim += batch_ssim.item()
+
+            flux_pred = pred_clean.sum(dim=(1,2,3))
+            flux_clean = clean.sum(dim=(1,2,3))
+            flux_error = torch.abs(flux_pred - flux_clean) / (flux_clean + 1e-8)
+            running_flux_error += flux_error.mean().item() * 100
+
     num_batches = len(dataloader)
     return (running_total_loss / num_batches, 
             running_data_loss / num_batches, 
-            running_phys_loss / num_batches)
+            running_phys_loss / num_batches,
+            running_psnr / num_batches,
+            running_ssim / num_batches,
+            running_flux_error / num_batches)
 
 def main(args):
     set_seed(42)
+    sys.stdout = Logger(f"results/training_log.txt")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     print(f"Starting training on device: {device}")
@@ -114,6 +144,11 @@ def main(args):
 
     criterion = PILoss(lambda_data=args.lambda_data, lambda_phys=args.lambda_phys).to(device)
     optimizer = optim.Adam(model.parameters(), lr=args.learning_rate)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, 
+        T_max=args.epochs, 
+        eta_min=1e-6
+    )
 
     best_val_loss = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
@@ -126,7 +161,10 @@ def main(args):
     for epoch in range(1, args.epochs + 1):
 
         tot_loss, data_loss, phys_loss = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch)
-        val_tot, val_data, val_phys = evaluate_model(model, val_dataloader, criterion, device)
+        val_tot, val_data, val_phys, _, _, _ = evaluate_model(model, val_dataloader, criterion, device)
+
+        scheduler.step()
+
         print(f"Epoch [{epoch}/{args.epochs}] | "
               f"Train Loss: {tot_loss:.5f} (Data: {data_loss:.5f} | Phys: {phys_loss:.5f}) | "
               f"Val Loss: {val_tot:.5f} (Data: {val_data:.5f} | Phys: {val_phys:.5f})")
@@ -159,9 +197,12 @@ def main(args):
     print("Evaluating best model on test set...")
 
     model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    test_tot, test_data, test_phys = evaluate_model(model, test_dataloader, criterion, device, show_datacube=True)
+    test_tot, test_data, test_phys, test_psnr, test_ssim, test_flux_error = evaluate_model(model, test_dataloader, criterion, device, show_datacube=True)
 
     print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f})")
+    print(f"Test PSNR: {test_psnr:.5f} dB")
+    print(f"Test SSIM: {test_ssim:.5f}")
+    print(f"Test Flux Error: {test_flux_error:.5f}%")
 
 
 if __name__ == '__main__':
