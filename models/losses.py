@@ -22,7 +22,7 @@ class PILoss(nn.Module):
         psf: Telescope kernel (Dirty Beam) [Batch, Channels, X, Y]
         """
         
-        loss_data = self.mse(pred_clean, clean_gt)
+        loss_data = self.mae(pred_clean, clean_gt)
 
         if self.lambda_phys == 0.0:
             return loss_data, loss_data, torch.tensor(0.0, device=pred_clean.device)

@@ -2,6 +2,8 @@ import torch
 import torch.nn.functional as F
 import random
 import numpy as np
+import sys
+import os
 
 def _get_act(act):
     if act == 'tanh':
@@ -53,4 +55,17 @@ def set_seed(seed=42):
     torch.cuda.manual_seed_all(seed)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+
+class Logger(object):
+    def __init__(self, filename="training_log.txt"):
+        self.terminal = sys.stdout
+        self.log = open(filename, "w", encoding='utf-8')
+
+    def write(self, message):
+        self.terminal.write(message)
+        self.log.write(message)
+        self.log.flush() 
+
+    def flush(self):
+        pass
     
