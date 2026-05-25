@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.fft
+from pytorch_msssim import MS_SSIM, SSIM
 
 class PILoss(nn.Module):
     """
@@ -53,6 +54,42 @@ class PILoss(nn.Module):
         loss_total = (self.lambda_data * loss_data) + (self.lambda_phys * loss_phys)
 
         return loss_total, loss_data, loss_phys
+    
+
+
+class CombinedLoss(nn.Module): 
+    def __init__(self, lambda_data=1.0, lambda_phys=1.0, alpha=0.84, channels=64):
+        super().__init__()
+        self.lambda_data = lambda_data
+        self.lambda_phys = lambda_phys
+        self.alpha = alpha
+        
+        self.l1_loss = nn.L1Loss()
+        self.ssim_loss = SSIM(data_range=1.0, size_average=True, channel=channels, win_size=11)
+
+        self.mse_phys = nn.MSELoss()
+
+    def forward(self, pred_clean, dirty_image, clean_gt, psf):
+        l1 = self.l1_loss(pred_clean, clean_gt)
+
+        batch_max = clean_gt.max().clamp(min=1e-8)
+        ssim_val = self.ssim_loss(pred_clean / batch_max, clean_gt / batch_max)
+        msssim = 1.0 - ssim_val
+
+        loss_data = (self.alpha * msssim) + ((1 - self.alpha) * l1)
+
+        psf_shifted = torch.fft.ifftshift(psf, dim=(-2, -1))
+        pred_fft = torch.fft.rfft2(pred_clean)
+        psf_fft = torch.fft.rfft2(psf_shifted)
+        simulated_dirty_fft = pred_fft * psf_fft
+        simulated_dirty = torch.fft.irfft2(simulated_dirty_fft, s=pred_clean.shape[-2:])
+        
+        loss_phys = self.mse_phys(simulated_dirty, dirty_image) 
+
+        loss_total = (self.lambda_data * loss_data) + (self.lambda_phys * loss_phys)
+
+        return loss_total, loss_data, l1, msssim, loss_phys
+
 
 
 if __name__ == "__main__":
