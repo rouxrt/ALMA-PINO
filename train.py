@@ -51,10 +51,10 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
 
     num_batches = len(dataloader)
     return (running_total_loss / num_batches, 
-            running_data_loss / num_batches, 
-            running_phys_loss / num_batches,
+            running_data_loss / num_batches,
             running_l1_loss / num_batches,
-            running_msssim_loss / num_batches)
+            running_msssim_loss / num_batches, 
+            running_phys_loss / num_batches)
 
 def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     model.eval() 
@@ -180,12 +180,12 @@ def main(args):
         
         history_loss["train"].append(tot_loss)
         history_loss["val"].append(val_tot)
-        history_loss["train_data"].append(data_loss)
-        history_loss["train_l1"].append(l1)
-        history_loss["train_msssim"].append(msssim)
-        history_loss["train_phys"].append(phys_loss)
-        history_loss["val_data"].append(val_data)
-        history_loss["val_phys"].append(val_phys)
+        history_loss["train_data"].append(args.lambda_data * data_loss)
+        history_loss["train_l1"].append(args.lambda_data * (1 - args.alpha) * l1)
+        history_loss["train_msssim"].append(args.lambda_data * args.alpha * msssim)
+        history_loss["train_phys"].append(args.lambda_phys * phys_loss)
+        history_loss["val_data"].append(args.lambda_data * val_data)
+        history_loss["val_phys"].append(args.lambda_phys * val_phys)
 
         if val_tot < best_val_loss:
             best_val_loss = val_tot

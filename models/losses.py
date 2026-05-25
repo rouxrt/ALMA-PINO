@@ -70,13 +70,21 @@ class CombinedLoss(nn.Module):
         self.mse_phys = nn.MSELoss()
 
     def forward(self, pred_clean, dirty_image, clean_gt, psf):
-        l1 = self.l1_loss(pred_clean, clean_gt)
-
+        
         batch_max = clean_gt.max().clamp(min=1e-8)
-        ssim_val = self.ssim_loss(pred_clean / batch_max, clean_gt / batch_max)
+
+        #normalize pred_clean and clean_gt to [0,1] in order to have same scale for L1 and SSIM
+        pred_norm = pred_clean / batch_max
+        gt_norm = clean_gt / batch_max
+
+        l1 = self.l1_loss(pred_norm, gt_norm)
+
+        ssim_val = self.ssim_loss(pred_norm, gt_norm)
         msssim = 1.0 - ssim_val
 
-        loss_data = (self.alpha * msssim) + ((1 - self.alpha) * l1)
+        loss_data_norm = (self.alpha * msssim) + ((1 - self.alpha) * l1)
+
+        loss_data = loss_data_norm * batch_max
 
         psf_shifted = torch.fft.ifftshift(psf, dim=(-2, -1))
         pred_fft = torch.fft.rfft2(pred_clean)
