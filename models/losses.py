@@ -84,6 +84,8 @@ class CombinedLoss(nn.Module):
 
         loss_data_norm = (self.alpha * msssim) + ((1 - self.alpha) * l1)
 
+        l1 = l1 * batch_max
+        msssim = msssim * batch_max
         loss_data = loss_data_norm * batch_max
 
         psf_shifted = torch.fft.ifftshift(psf, dim=(-2, -1))
