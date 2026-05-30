@@ -73,32 +73,35 @@ class CombinedLoss(nn.Module):
         
         batch_max = clean_gt.max().clamp(min=1e-8)
 
-        #normalize pred_clean and clean_gt to [0,1] in order to have same scale for L1 and SSIM
+        #normalize to [0,1] in order to have same scale for L1, SSIM and physics loss
         pred_norm = pred_clean / batch_max
         gt_norm = clean_gt / batch_max
+        dirty_norm = dirty_image / batch_max
 
-        l1 = self.l1_loss(pred_norm, gt_norm)
+        l1_norm = self.l1_loss(pred_norm, gt_norm)
 
         ssim_val = self.ssim_loss(pred_norm, gt_norm)
-        msssim = 1.0 - ssim_val
+        ssim_norm = 1.0 - ssim_val
 
-        loss_data_norm = (self.alpha * msssim) + ((1 - self.alpha) * l1)
-
-        l1 = l1 * batch_max
-        msssim = msssim * batch_max
-        loss_data = loss_data_norm * batch_max
+        loss_data_norm = (self.alpha * ssim_norm) + ((1 - self.alpha) * l1_norm)
 
         psf_shifted = torch.fft.ifftshift(psf, dim=(-2, -1))
-        pred_fft = torch.fft.rfft2(pred_clean)
+        pred_fft = torch.fft.rfft2(pred_norm)
         psf_fft = torch.fft.rfft2(psf_shifted)
         simulated_dirty_fft = pred_fft * psf_fft
-        simulated_dirty = torch.fft.irfft2(simulated_dirty_fft, s=pred_clean.shape[-2:])
+        simulated_dirty_norm = torch.fft.irfft2(simulated_dirty_fft, s=pred_norm.shape[-2:])
         
-        loss_phys = self.mse_phys(simulated_dirty, dirty_image) 
+        loss_phys_norm = self.mse_phys(simulated_dirty_norm, dirty_norm) 
 
-        loss_total = (self.lambda_data * loss_data) + (self.lambda_phys * loss_phys)
+        loss_total_norm = (self.lambda_data * loss_data_norm) + (self.lambda_phys * loss_phys_norm)
 
-        return loss_total, loss_data, l1, msssim, loss_phys
+        l1 = l1_norm * batch_max
+        ssim = ssim_norm * batch_max
+        loss_data = loss_data_norm * batch_max
+        loss_total = loss_total_norm * batch_max
+        loss_phys = loss_phys_norm * batch_max
+
+        return loss_total_norm, loss_data_norm, l1_norm, ssim_norm, loss_phys_norm
 
 
 
