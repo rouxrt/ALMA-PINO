@@ -58,10 +58,11 @@ class PILoss(nn.Module):
 
 
 class CombinedLoss(nn.Module): 
-    def __init__(self, lambda_data=1.0, lambda_phys=1.0, alpha=0.84, channels=64):
+    def __init__(self, lambda_data=1.0, lambda_phys=1.0, lambda_spec=0.1, alpha=0.84, channels=64):
         super().__init__()
         self.lambda_data = lambda_data
         self.lambda_phys = lambda_phys
+        self.lambda_spec = lambda_spec
         self.alpha = alpha
         
         self.l1_loss = nn.L1Loss()
@@ -93,15 +94,20 @@ class CombinedLoss(nn.Module):
         
         loss_phys_norm = self.mse_phys(simulated_dirty_norm, dirty_norm) 
 
-        loss_total_norm = (self.lambda_data * loss_data_norm) + (self.lambda_phys * loss_phys_norm)
+        diff_pred = pred_norm[:, 1:, :, :] - pred_norm[:, :-1, :, :]
+        diff_gt = gt_norm[:, 1:, :, :] - gt_norm[:, :-1, :, :]
+        
+        loss_spec_norm = self.mse_phys(diff_pred, diff_gt)
+
+        loss_total_norm = (self.lambda_data * loss_data_norm) + (self.lambda_phys * loss_phys_norm) + (self.lambda_spec * loss_spec_norm)
 
         l1 = l1_norm * batch_max
         ssim = ssim_norm * batch_max
         loss_data = loss_data_norm * batch_max
         loss_total = loss_total_norm * batch_max
         loss_phys = loss_phys_norm * batch_max
-
-        return loss_total_norm, loss_data_norm, l1_norm, ssim_norm, loss_phys_norm
+        loss_spec = loss_spec_norm * batch_max
+        return loss_total_norm, loss_data_norm, l1_norm, ssim_norm, loss_phys_norm, loss_spec_norm
 
 
 

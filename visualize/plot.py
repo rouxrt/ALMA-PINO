@@ -95,6 +95,7 @@ def plot_loss_history(history: dict, title: str, save_path: str):
     ax2.plot(epochs, history["train"], color='blue', label='Total Loss')    
     ax2.plot(epochs, history["train_l1"], color='purple', label='L1 Loss')
     ax2.plot(epochs, history["train_msssim"], color='orange', label='MS-SSIM Loss')
+    ax2.plot(epochs, history["train_spec"], color='brown', label='Spectral Loss')
     ax2.set_title(f"Loss Components vs Epochs")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Loss Value")
