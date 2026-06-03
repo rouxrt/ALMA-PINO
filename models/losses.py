@@ -101,12 +101,6 @@ class CombinedLoss(nn.Module):
 
         loss_total_norm = (self.lambda_data * loss_data_norm) + (self.lambda_phys * loss_phys_norm) + (self.lambda_spec * loss_spec_norm)
 
-        l1 = l1_norm * batch_max
-        ssim = ssim_norm * batch_max
-        loss_data = loss_data_norm * batch_max
-        loss_total = loss_total_norm * batch_max
-        loss_phys = loss_phys_norm * batch_max
-        loss_spec = loss_spec_norm * batch_max
         return loss_total_norm, loss_data_norm, l1_norm, ssim_norm, loss_phys_norm, loss_spec_norm
 
 
