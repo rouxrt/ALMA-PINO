@@ -44,11 +44,7 @@ $$ \mathcal{F}(I_{\mathrm{dirty}}) = \mathcal{F}({I}_{\mathrm{true}}) \cdot \mat
 
 Recovering $I_{\mathrm{true}}$ from $I_{\mathrm{dirty}}$ is therefore an ill-posed inverse problem because the forward operator is compact and information is partially lost by incomplete spatial-frequency sampling.
 
-Traditional methods such as CLEAN iteratively approximate the inverse solution. In this work, we instead seek to learn the inverse operator
-
-$ [\mathcal{G}^{-1} : I_{\mathrm{dirty}} \mapsto I_{\mathrm{true}} ] $
-
-using Physics-Informed Neural Operators (PINO).
+Traditional methods such as CLEAN iteratively approximate the inverse solution. In this work, we instead seek to learn the inverse operator $[\mathcal{G}^{-1} : I_{\mathrm{dirty}} \mapsto I_{\mathrm{true}} ]$ using Physics-Informed Neural Operators (PINO).
 
 The Fourier Neural Operator is particularly suitable for this task because it is designed to learn mappings between infinite-dimensional function spaces rather than between finite-dimensional vectors. Consequently, the network learns an approximation of the inverse Fredholm operator itself, enabling mesh-independent inference and improved generalization across datacubes with varying spatial resolutions.
 
@@ -56,11 +52,11 @@ The Fourier Neural Operator is particularly suitable for this task because it is
  
 ## Mathematical Framework & Architecture
  
-The scientific core of the project lies in its hybrid **Physics-Informed Loss Function**, structured in a dimensionless space (normalized against the dynamic peak of each batch $ c = \max(I_{gt}) $) to ensure universal numerical stability and independence from source magnitude.
+The scientific core of the project lies in its hybrid **Physics-Informed Loss Function**, structured in a dimensionless space (normalized against the dynamic peak of each batch $c = \max(I_{gt})$) to ensure universal numerical stability and independence from source magnitude.
  
 The total loss is defined as:
  
-$$ \mathcal{L}_{\text{total}} = \mathcal{L}_{    \text{data}} + \lambda_{    \text{phys}}\mathcal{L}_{   \text{physics}} + \lambda_{ \text{spec}}\mathcal{L}_{   \text{spectral $$
+$$ \mathcal{L}_{\text{total}} = \mathcal{L}_{    \text{data}} + \lambda_{    \text{phys}}\mathcal{L}_{   \text{physics}} + \lambda_{ \text{spec}}\mathcal{L}_{\text{spectral}} $$
  
 ### 1. Data-Fidelity Loss ($\mathcal{L}_{   \text{data}}$)
 Optimized to handle the high sparsity of the radioastronomical cosmic background and prevent structural artifacts or visual hallucinations:
