@@ -54,15 +54,15 @@ def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
         fig, axes = plt.subplots(1, 3, figsize=(15, 5))
         
         im0 = axes[0].imshow(img_dirty, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
-        axes[0].set_title(f'Dirty Image - Canale {c}')
+        axes[0].set_title(f'Dirty Image - Channel {c}')
         axes[0].axis('off')
         
         im1 = axes[1].imshow(img_pred, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
-        axes[1].set_title(f'PI-FNO Prediction - Canale {c}')
+        axes[1].set_title(f'PI-FNO Prediction - Channel {c}')
         axes[1].axis('off')
         
         im2 = axes[2].imshow(img_clean, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
-        axes[2].set_title(f'Ground Truth (Clean) - Canale {c}')
+        axes[2].set_title(f'Ground Truth (Clean) - Channel {c}')
         axes[2].axis('off')
 
         fig.colorbar(im2, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
