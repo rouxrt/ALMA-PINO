@@ -68,14 +68,14 @@ $$ \mathcal{L}_{ \text{data}} =  \alpha \cdot (1 -   \text{SSIM}(I_{ \text{pred}
 ### 2. Forward Physics Loss ($\mathcal{L}_{ \text{physics}}$)
 Exploits Fourier optics and the linearity of the Fourier Transform to constrain the prediction to respect the convolution equation of the interferometric instrument:
 
-$$ I_{\text{dirty\_pred}} = \mathcal{F}^{-1}\left(\mathcal{F}(I_{\text{pred}}) \cdot \mathcal{F}(\text{PSF})\right) $$
+$$ I_{\text{dirty-pred}} = \mathcal{F}^{-1}\left[\mathcal{F}(I_{\text{pred}}) \cdot \mathcal{F}(\text{PSF})\right] $$
 
-$$ \mathcal{L}_{\text{physics}} = \text{MSE}(I_{\text{dirty\_pred}}, I_{\text{dirty}}) $$
+$$ \mathcal{L}_{\text{physics}} = \text{MSE}(I_{\text{dirty-pred}}, I_{\text{dirty}}) $$
  
 ### 3. Spectral Continuity Loss ($\mathcal{L}_{ \text{spectral}}$)
 A 1D Total Variation (TV) penalty computed along the frequency axis (Z) that forces the neural operator layers to preserve the physical continuity of the cosmic gas spectral emission lines:
 
-$$ \mathcal{L}_{\text{spectral}} = \frac{1}{N} \sum_{z} | (I_{\text{pred}, z+1} - I_{\text{pred}, z}) - (I_{\text{gt}, z+1} - I_{\text{gt}, z}) |^2 $$
+$$ \mathcal{L}_{\text{spectral}} = \frac{1}{N} \sum_{z} | (I_{\text{pred}, z+1} - I_{\text{pred}, z}) - (I_{\text{gt}, z+1} - I_{\text{gt}, z})|^2 $$
  
  
 ---
