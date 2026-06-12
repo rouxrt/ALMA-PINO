@@ -3,7 +3,9 @@
 [![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-2.0%2B-orange.svg)](https://pytorch.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
- 
+
+<img width="1264" height="399" alt="image" src="https://github.com/user-attachments/assets/955b9abb-fedc-404b-9901-6d7d32f64f4e" />
+
 **ALMA-PINO** (*Physics-Informed Neural Operators for ALMA*) is a Scientific Machine Learning (SciML) framework designed for the reconstruction of three-dimensional (spatial and spectral) interferometric astronomical datacubes from the **ALMA (Atacama Large Millimeter/submillimeter Array)** observatory.
  
 Leveraging the *Mesh Independence* properties of **Fourier Neural Operators (FNO)**, invert the interferometric measurement operator induced by incomplete uv-sampling and noise effects introduced by the telescope's Point Spread Function (PSF), integrating rigorous physical constraints directly into the optimization loop.
