@@ -1,0 +1,7 @@
+matplotlib==3.11.0
+numpy==2.4.6
+pytorch_msssim==1.0.0
+torch>=2.5
+torchvision>=0.20
+torchaudio>=2.5
+torchmetrics==1.9.0
