@@ -35,31 +35,19 @@ where:
 * $n(\mathbf{x})$ represents observational noise.
 
 For radio interferometric imaging, the kernel corresponds to the synthesized beam (dirty beam), which makes the forward model equivalent to a convolution operator:
-$$I_{\mathrm{dirty}}=I_{\mathrm{true}} * \mathrm{PSF}
-+
-n.
-$$
+
+$$ I_{\mathrm{dirty}}=I_{\mathrm{true}} * \mathrm{PSF} + n. $$
 
 In Fourier space this relation becomes
-$$\mathcal{F}(I_{\mathrm{dirty}}) =
-\mathcal{F}({I}_{\mathrm{true}})
-\cdot
-\mathcal{F}({\mathrm{PSF}})
-+
-\mathcal{F}({n}).
-$$
+
+$$ \mathcal{F}(I_{\mathrm{dirty}}) = \mathcal{F}({I}_{\mathrm{true}}) \cdot \mathcal{F}({\mathrm{PSF}}) + \mathcal{F}({n}). $$
 
 Recovering $I_{\mathrm{true}}$ from $I_{\mathrm{dirty}}$ is therefore an ill-posed inverse problem because the forward operator is compact and information is partially lost by incomplete spatial-frequency sampling.
 
 Traditional methods such as CLEAN iteratively approximate the inverse solution. In this work, we instead seek to learn the inverse operator
-$
-[
-\mathcal{G}^{-1} :
-I_{\mathrm{dirty}}
-\mapsto
-I_{\mathrm{true}}
-]
-$
+
+$ [\mathcal{G}^{-1} : I_{\mathrm{dirty}} \mapsto I_{\mathrm{true}} ] $
+
 using Physics-Informed Neural Operators (PINO).
 
 The Fourier Neural Operator is particularly suitable for this task because it is designed to learn mappings between infinite-dimensional function spaces rather than between finite-dimensional vectors. Consequently, the network learns an approximation of the inverse Fredholm operator itself, enabling mesh-independent inference and improved generalization across datacubes with varying spatial resolutions.
@@ -68,25 +56,25 @@ The Fourier Neural Operator is particularly suitable for this task because it is
  
 ## Mathematical Framework & Architecture
  
-The scientific core of the project lies in its hybrid **Physics-Informed Loss Function**, structured in a dimensionless space (normalized against the dynamic peak of each batch $c = \max(I_{gt})$) to ensure universal numerical stability and independence from source magnitude.
+The scientific core of the project lies in its hybrid **Physics-Informed Loss Function**, structured in a dimensionless space (normalized against the dynamic peak of each batch $ c = \max(I_{gt}) $) to ensure universal numerical stability and independence from source magnitude.
  
 The total loss is defined as:
  
-$$\mathcal{L}_{\text{total}} = \mathcal{L}_{    \text{data}} + \lambda_{    \text{phys}}\mathcal{L}_{   \text{physics}} + \lambda_{ \text{spec}}\mathcal{L}_{   \text{spectral}}$$
+$$ \mathcal{L}_{\text{total}} = \mathcal{L}_{    \text{data}} + \lambda_{    \text{phys}}\mathcal{L}_{   \text{physics}} + \lambda_{ \text{spec}}\mathcal{L}_{   \text{spectral $$
  
 ### 1. Data-Fidelity Loss ($\mathcal{L}_{   \text{data}}$)
 Optimized to handle the high sparsity of the radioastronomical cosmic background and prevent structural artifacts or visual hallucinations:
-$$\mathcal{L}_{ \text{data}} =  \alpha \cdot (1 -   \text{SSIM}(I_{ \text{pred}}, I_{   \text{gt}})) + (1 -  \alpha) \cdot  \text{MAE}(I_{  \text{pred}}, I_{   \text{gt}})$$
-*Recommended setup:* $ \alpha = 0.03$ to give statistical dominance to the MAE (L1) metric, forcing the background to remain strictly at absolute zero.
+$$ \mathcal{L}_{ \text{data}} =  \alpha \cdot (1 -   \text{SSIM}(I_{ \text{pred}}, I_{   \text{gt}})) + (1 -  \alpha) \cdot  \text{MAE}(I_{  \text{pred}}, I_{   \text{gt}}) $$
+*Recommended setup:* $ \alpha = 0.03 $ to give statistical dominance to the MAE (L1) metric, forcing the background to remain strictly at absolute zero.
  
 ### 2. Forward Physics Loss ($\mathcal{L}_{ \text{physics}}$)
 Exploits Fourier optics and the linearity of the Fourier Transform to constrain the prediction to respect the convolution equation of the interferometric instrument:
-$$I_{   \text{dirty\_pred}} = \mathcal{F}^{-1}\left(\mathcal{F}(I_{   \text{pred}}) \cdot \mathcal{F}(    \text{PSF})\right)$$
-$$\mathcal{L}_{ \text{physics}} =   \text{MSE}(I_{  \text{dirty\_pred}}, I_{ \text{dirty}})$$
+$$ I_{   \text{dirty\_pred}} = \mathcal{F}^{-1}\left(\mathcal{F}(I_{   \text{pred}}) \cdot \mathcal{F}(    \text{PSF})\right) $$
+$$ \mathcal{L}_{ \text{physics}} =   \text{MSE}(I_{  \text{dirty\_pred}}, I_{ \text{dirty}}) $$
  
 ### 3. Spectral Continuity Loss ($\mathcal{L}_{ \text{spectral}}$)
 A 1D Total Variation (TV) penalty computed along the frequency axis (Z) that forces the neural operator layers to preserve the physical continuity of the cosmic gas spectral emission lines:
-$$\mathcal{L}_{ \text{spectral}} = \frac{1}{N} \sum_{z} | (I_{  \text{pred}, z+1} - I_{ \text{pred}, z}) - (I_{ \text{gt}, z+1} - I_{   \text{gt}, z}) |^2$$
+$$ \mathcal{L}_{ \text{spectral}} = \frac{1}{N} \sum_{z} | (I_{  \text{pred}, z+1} - I_{ \text{pred}, z}) - (I_{ \text{gt}, z+1} - I_{   \text{gt}, z}) |^2 $$
  
  
 ---
