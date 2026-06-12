@@ -52,7 +52,7 @@ The Fourier Neural Operator is particularly suitable for this task because it is
  
 ## Mathematical Framework & Architecture
  
-The scientific core of the project lies in its hybrid **Physics-Informed Loss Function**, structured in a dimensionless space (normalized against the dynamic peak of each batch $c = \max(I_{gt})$) to ensure universal numerical stability and independence from source magnitude.
+The scientific core of the project lies in its hybrid **Physics-Informed Loss Function**, structured in a dimensionless space (normalized against the dynamic peak of each batch $c = \max(I_{gt})$ ) to ensure universal numerical stability and independence from source magnitude.
  
 The total loss is defined as:
  
@@ -60,16 +60,21 @@ $$ \mathcal{L}_{\text{total}} = \mathcal{L}_{    \text{data}} + \lambda_{    \te
  
 ### 1. Data-Fidelity Loss ($\mathcal{L}_{   \text{data}}$)
 Optimized to handle the high sparsity of the radioastronomical cosmic background and prevent structural artifacts or visual hallucinations:
+
 $$ \mathcal{L}_{ \text{data}} =  \alpha \cdot (1 -   \text{SSIM}(I_{ \text{pred}}, I_{   \text{gt}})) + (1 -  \alpha) \cdot  \text{MAE}(I_{  \text{pred}}, I_{   \text{gt}}) $$
+
 *Recommended setup:* $ \alpha = 0.03 $ to give statistical dominance to the MAE (L1) metric, forcing the background to remain strictly at absolute zero.
  
 ### 2. Forward Physics Loss ($\mathcal{L}_{ \text{physics}}$)
 Exploits Fourier optics and the linearity of the Fourier Transform to constrain the prediction to respect the convolution equation of the interferometric instrument:
+
 $$ I_{   \text{dirty\_pred}} = \mathcal{F}^{-1}\left(\mathcal{F}(I_{   \text{pred}}) \cdot \mathcal{F}(    \text{PSF})\right) $$
+
 $$ \mathcal{L}_{ \text{physics}} =   \text{MSE}(I_{  \text{dirty\_pred}}, I_{ \text{dirty}}) $$
  
 ### 3. Spectral Continuity Loss ($\mathcal{L}_{ \text{spectral}}$)
 A 1D Total Variation (TV) penalty computed along the frequency axis (Z) that forces the neural operator layers to preserve the physical continuity of the cosmic gas spectral emission lines:
+
 $$ \mathcal{L}_{ \text{spectral}} = \frac{1}{N} \sum_{z} | (I_{  \text{pred}, z+1} - I_{ \text{pred}, z}) - (I_{ \text{gt}, z+1} - I_{   \text{gt}, z}) |^2 $$
  
  
@@ -162,14 +167,7 @@ python train.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --la
 ```
  
 ---
- 
-## Results & Monitoring
- 
-The framework demonstrates exceptionally stable convergence on both the physical and structural components of the data space. Thanks to the dynamic balancing introduced by dimensionless normalization, the model significantly reduces the relative flux error at high spatial frequencies without suffering from catastrophic overfitting phenomena.
- 
-The extracted monitoring plots show how the *Physics Loss* (Forward Model) and the *Spectral Loss* work in perfect balance with data fidelity (MAE), guiding the Adam optimizer toward deep global minima.
- 
----
+
  
 ## Future Work
 - [ ] Native extension of the neural operator to the third dimension (**FNO3D**) with spectral convolution kernels to simulate the 3D diffraction PSF of radio telescopes.
