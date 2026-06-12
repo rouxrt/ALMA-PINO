@@ -8,8 +8,8 @@
 
 **ALMA-PINO** (*Physics-Informed Neural Operators for ALMA*) is a Scientific Machine Learning (SciML) framework designed for the reconstruction of three-dimensional (spatial and spectral) interferometric astronomical datacubes from the **ALMA (Atacama Large Millimeter/submillimeter Array)** observatory.
  
-Leveraging the *Mesh Independence* properties of **Fourier Neural Operators (FNO)**, invert the interferometric measurement operator induced by incomplete uv-sampling and noise effects introduced by the telescope's Point Spread Function (PSF), integrating rigorous physical constraints directly into the optimization loop.
- 
+This framework leverages the discretization-invariant properties of Fourier Neural Operators (FNOs) to learn the inverse mapping from dirty interferometric observations to reconstructed sky brightness distributions.
+
 ---
  
 ## Scientific Motivation
@@ -26,7 +26,7 @@ The reconstruction of an astronomical sky brightness distribution from an interf
 
 For an ideal linear imaging system, the observed dirty image (or dirty datacube channel) is related to the true sky brightness distribution through:
 
-$$ I_{\mathrm{dirty}}=\int_{\Omega} K(\mathbf{x},\mathbf{y}) , I_{\mathrm{true}}(\mathbf{y}) , d\mathbf{y} + n(\mathbf{x}) $$
+$$ I_{\mathrm{dirty}}=\int_{\Omega} K(\mathbf{x},\mathbf{y}) I_{\mathrm{true}}(\mathbf{y}) \, d\mathbf{y} + n(\mathbf{x}) $$
 
 where:
 
@@ -48,7 +48,7 @@ Recovering $I_{\mathrm{true}}$ from $I_{\mathrm{dirty}}$ is therefore an ill-pos
 
 Traditional methods such as CLEAN iteratively approximate the inverse solution. In this work, we instead seek to learn the inverse operator $[\mathcal{G}^{-1} : I_{\mathrm{dirty}} \mapsto I_{\mathrm{true}} ]$ using Physics-Informed Neural Operators (PINO).
 
-The Fourier Neural Operator is particularly suitable for this task because it is designed to learn mappings between infinite-dimensional function spaces rather than between finite-dimensional vectors. Consequently, the network learns an approximation of the inverse Fredholm operator itself, enabling mesh-independent inference and improved generalization across datacubes with varying spatial resolutions.
+The Fourier Neural Operator is particularly suitable for this task because it is designed to learn mappings between infinite-dimensional function spaces rather than between finite-dimensional vectors. Consequently, the network learns an approximation of the inverse Fredholm operator itself, potentially enabling inference across varying spatial discretizations and improving generalization beyond the training grid.
 
 ---
  
@@ -68,14 +68,14 @@ $$ \mathcal{L}_{ \text{data}} =  \alpha \cdot (1 -   \text{SSIM}(I_{ \text{pred}
 *Recommended setup:* $\alpha = 0.03$ to give statistical dominance to the MAE (L1) metric, forcing the background to remain strictly at absolute zero.
  
 ### 2. Forward Physics Loss ($\mathcal{L}_{ \text{physics}}$)
-Exploits Fourier optics and the linearity of the Fourier Transform to constrain the prediction to respect the convolution equation of the interferometric instrument:
+Exploits the convolution theorem and the linearity of the Fourier Transform to constrain the prediction to respect the convolution equation of the interferometric instrument:
 
 $$ I_{\text{dirty-pred}} = \mathcal{F}^{-1}\left[\mathcal{F}(I_{\text{pred}}) \cdot \mathcal{F}(\text{PSF})\right] $$
 
 $$ \mathcal{L}_{\text{physics}} = \text{MSE}(I_{\text{dirty-pred}}, I_{\text{dirty}}) $$
  
 ### 3. Spectral Continuity Loss ($\mathcal{L}_{ \text{spectral}}$)
-A 1D Total Variation (TV) penalty computed along the frequency axis (Z) that forces the neural operator layers to preserve the physical continuity of the cosmic gas spectral emission lines:
+A spectral-gradient consistency loss computed along the frequency axis that forces the neural operator layers to preserve the physical continuity of the cosmic gas spectral emission lines:
 
 $$ \mathcal{L}_{\text{spectral}} = \frac{1}{N} \sum_{z} | (I_{\text{pred}, z+1} - I_{\text{pred}, z}) - (I_{\text{gt}, z+1} - I_{\text{gt}, z})|^2 $$
  
@@ -140,7 +140,7 @@ The framework is highly modular and can be dynamically configured using the foll
 | `--lambda_data` | `float`| `1.0` | Multiplier for the primary data-fidelity loss component. |
 | `--lambda_phys` | `float`| `0.5` | Multiplier for the Forward Physics Loss (MSE in Fourier space). |
 | `--lambda_spec` | `float`| `0.1` | Multiplier for the 1D Total Variation Spectral Continuity Loss. |
-| `--alpha` | `float`| `0.84` | Balancing factor within the data loss. Lower values (e.g., `0.03`) heavily favor MAE (L1) over MS-SSIM to preserve sparse background dynamics. |
+| `--alpha` | `float`| `0.03` | Balancing factor within the data loss. Lower values (e.g., `0.03`) heavily favor MAE (L1) over MS-SSIM to preserve sparse background dynamics. |
 ## Usage
  
 ### Training Loop

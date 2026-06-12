@@ -242,7 +242,7 @@ if __name__ == '__main__':
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')
     parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
     parser.add_argument('--lambda_spec', type=float, default=0.1, help='Weight of the Spectral Loss')
-    parser.add_argument('--alpha', type=float, default=0.84, help='Weighting factor for combining L1 and MS-SSIM in the data loss')
+    parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor for combining L1 and MS-SSIM in the data loss')
 
     args = parser.parse_args()
     
