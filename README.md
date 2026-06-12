@@ -24,13 +24,7 @@ The reconstruction of an astronomical sky brightness distribution from an interf
 
 For an ideal linear imaging system, the observed dirty image (or dirty datacube channel) is related to the true sky brightness distribution through:
 
-$$I_{\mathrm{dirty}}=\int_{\Omega}
-K(\mathbf{x},\mathbf{y})
-, I_{\mathrm{true}}(\mathbf{y})
-, d\mathbf{y}
-+
-n(\mathbf{x}),
-$$
+$$ I_{\mathrm{dirty}}=\int_{\Omega} K(\mathbf{x},\mathbf{y}) , I_{\mathrm{true}}(\mathbf{y}) , d\mathbf{y} + n(\mathbf{x}) $$
 
 where:
 
@@ -47,8 +41,7 @@ n.
 $$
 
 In Fourier space this relation becomes
-$$
-\mathcal{F}(I_{\mathrm{dirty}}) =
+$$\mathcal{F}(I_{\mathrm{dirty}}) =
 \mathcal{F}({I}_{\mathrm{true}})
 \cdot
 \mathcal{F}({\mathrm{PSF}})
