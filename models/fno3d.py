@@ -36,7 +36,7 @@ class FNO3d(nn.Module):
             self.layers = [width] * (len(modes1) + 1)
         else:
             self.layers = layers
-        self.fc0 = nn.Linear(in_dim, layers[0])
+        self.fc0 = nn.Linear(in_dim, self.layers[0])
 
         self.sp_convs = nn.ModuleList([SpectralConv3d(
             in_size, out_size, mode1_num, mode2_num, mode3_num)
@@ -46,7 +46,7 @@ class FNO3d(nn.Module):
         self.ws = nn.ModuleList([nn.Conv1d(in_size, out_size, 1)
                                  for in_size, out_size in zip(self.layers, self.layers[1:])])
 
-        self.fc1 = nn.Linear(layers[-1], fc_dim)
+        self.fc1 = nn.Linear(self.layers[-1], fc_dim)
         self.fc2 = nn.Linear(fc_dim, out_dim)
         self.act = _get_act(act)
 
