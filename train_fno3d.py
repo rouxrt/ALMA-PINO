@@ -87,7 +87,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             pred_clean = torch.clamp(raw_pred_3d.squeeze(1), min=0.0)
 
             if show_datacube:
-                visualize_datacube(dirty, clean, pred_clean)
+                visualize_datacube(dirty, clean, pred_clean, output_dir="results_3d/datacube_visualization")
                 show_datacube = False
 
             loss_total, loss_data, l1, msssim, loss_phys, loss_spec = criterion(pred_clean, dirty, clean, psf)
@@ -239,7 +239,7 @@ def main(args):
     print("\n" + "="*50)
     print("Evaluating best 3D model on test set...")
 
-    model.load_state_dict(torch.load(best_model_path, map_location=device))
+    model.load_state_dict(torch.load(best_model_path, map_location=device, weights_only=True))
     test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(
         model, test_dataloader, criterion, device, show_datacube=True
     )
