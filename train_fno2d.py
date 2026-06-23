@@ -111,8 +111,8 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 
 def main(args):
     set_seed(42)
-    os.makedirs('results', exist_ok=True)
-    sys.stdout = Logger(f"results/training_log.txt")
+    os.makedirs('results_2d', exist_ok=True)
+    sys.stdout = Logger(f"results_2d/training_log.txt")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
@@ -166,7 +166,7 @@ def main(args):
 
     best_val_loss = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
-    best_model_path = os.path.join('checkpoints', 'best_model.pth')
+    best_model_path = os.path.join('checkpoints', 'fno2d.pth')
 
     fixed_val_batch = next(iter(val_dataloader))
 
