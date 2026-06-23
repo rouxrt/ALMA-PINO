@@ -231,7 +231,7 @@ def main(args):
                 sample_pred = sample_pred_3d.squeeze(1)
             
             save_predictions(sample_dirty, sample_clean, sample_pred.cpu(), 
-                             epoch, tot_loss, data_loss, phys_loss)
+                             epoch, tot_loss, data_loss, phys_loss, output_dir="results_3d/predictions")
             
     plot_loss_history(history_loss, title="PI-FNO3d Training Loss", save_path="results_3d/loss_history.png")
 
