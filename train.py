@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 import os
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
-from models.fno import FNO2d
+from models.fno2d import FNO2d
 from models.losses import PILoss, CombinedLoss
 from models.utils import Logger, set_seed
 from visualize.plot import save_predictions, plot_loss_history, visualize_datacube
