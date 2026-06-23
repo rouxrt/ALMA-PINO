@@ -47,6 +47,45 @@ def get_grid2d(shape, device):
 
 
 
+def add_padding3(x, num_pad1, num_pad2, num_pad3):
+    if max(num_pad1) > 0 or max(num_pad2) > 0 or max(num_pad3) > 0:
+        res = F.pad(x, (num_pad1[0], num_pad1[1], 
+                        num_pad2[0], num_pad2[1], 
+                        num_pad3[0], num_pad3[1]), 'constant', 0.)
+    else:
+        res = x
+    return res
+
+
+
+def remove_padding3(x, num_pad1, num_pad2, num_pad3):
+    if max(num_pad1) > 0 or max(num_pad2) > 0 or max(num_pad3) > 0:
+        res = x[..., 
+                num_pad3[0]:-num_pad3[1] if num_pad3[1] > 0 else None, 
+                num_pad2[0]:-num_pad2[1] if num_pad2[1] > 0 else None, 
+                num_pad1[0]:-num_pad1[1] if num_pad1[1] > 0 else None]
+    else:
+        res = x
+    return res
+
+
+
+def get_grid3d(shape, device):
+    batchsize, size_z, size_x, size_y = shape[0], shape[2], shape[3], shape[4]
+    
+    gridx = torch.linspace(0, 1, size_x, dtype=torch.float)
+    gridx = gridx.reshape(1, 1, 1, size_x, 1).repeat([batchsize, 1, size_z, 1, size_y])
+    
+    gridy = torch.linspace(0, 1, size_y, dtype=torch.float)
+    gridy = gridy.reshape(1, 1, 1, 1, size_y).repeat([batchsize, 1, size_z, size_x, 1])
+    
+    gridz = torch.linspace(0, 1, size_z, dtype=torch.float)
+    gridz = gridz.reshape(1, 1, size_z, 1, 1).repeat([batchsize, 1, 1, size_x, size_y])
+    
+    return torch.cat((gridx, gridy, gridz), dim=1).to(device)
+
+
+
 def set_seed(seed=42):
     random.seed(seed)
     np.random.seed(seed)
