@@ -6,5 +6,6 @@ __pycache__/
 
 results/
 results_3d/
+results_2d/
 checkpoints/
 datacube/

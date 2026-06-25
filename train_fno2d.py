@@ -79,7 +79,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             pred_clean = torch.clamp(raw_pred, min=0.0)
 
             if show_datacube:
-                visualize_datacube(dirty, clean, pred_clean)
+                visualize_datacube(dirty, clean, pred_clean, output_dir="results_2d/visualizations")
                 show_datacube = False
             loss_total, loss_data, l1, msssim, loss_phys, loss_spec = criterion(pred_clean, dirty, clean, psf)
 
@@ -206,9 +206,9 @@ def main(args):
                 sample_pred = model(sample_dirty.to(device))
             
             save_predictions(sample_dirty, sample_clean, sample_pred, 
-                             epoch, tot_loss, data_loss, phys_loss)
+                             epoch, tot_loss, data_loss, phys_loss, output_dir="results_2d/predictions")
     
-    plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results/loss_history.png")
+    plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results_2d/loss_history.png")
 
     print("\nTraining Completed!")
     print("\n" + "="*50)
@@ -241,8 +241,8 @@ if __name__ == '__main__':
     
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')
     parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
-    parser.add_argument('--lambda_spec', type=float, default=0.1, help='Weight of the Spectral Loss')
-    parser.add_argument('--alpha', type=float, default=0.84, help='Weighting factor for combining L1 and MS-SSIM in the data loss')
+    parser.add_argument('--lambda_spec', type=float, default=0.0, help='Weight of the Spectral Loss')
+    parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor for combining L1 and MS-SSIM in the data loss')
 
     args = parser.parse_args()
     

@@ -266,13 +266,13 @@ if __name__ == '__main__':
     parser.add_argument('--pad_ratio', type=float, default=0.1, help='Padding ratio for 3D boundary protection')
     
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
-    parser.add_argument('--batch_size', type=int, default=4, help='Batch size (tipicamente più basso in 3D per memoria)')
+    parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
     parser.add_argument('--learning_rate', type=float, default=0.005, help='Learning rate')
     
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')
     parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
-    parser.add_argument('--lambda_spec', type=float, default=0.1, help='Weight of the Spectral Loss')
-    parser.add_argument('--alpha', type=float, default=0.84, help='Weighting factor between L1 and MS-SSIM')
+    parser.add_argument('--lambda_spec', type=float, default=0.0, help='Weight of the Spectral Loss')
+    parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor between L1 and MS-SSIM')
 
     args = parser.parse_args()
     main(args)
