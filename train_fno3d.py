@@ -162,9 +162,9 @@ def main(args):
     num_fourier_layers = args.fourier_layers
     
     model = FNO3d(
-        modes1=[args.modes_x] * num_fourier_layers,  
-        modes2=[args.modes_y] * num_fourier_layers,  
-        modes3=[args.modes_z] * num_fourier_layers,  
+        modes1=[args.modes_z] * num_fourier_layers,  
+        modes2=[args.modes_x] * num_fourier_layers,  
+        modes3=[args.modes_y] * num_fourier_layers,  
         width=args.width, 
         in_dim=4,             
         out_dim=1,            
