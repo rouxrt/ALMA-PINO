@@ -59,7 +59,7 @@ def objective(trial):
     return best_val_loss
 
 if __name__ == "__main__":
-    os.makedirs('optuna_results_3d', exist_ok=True)
+    os.makedirs('optuna_results', exist_ok=True)
     
     study = optuna.create_study(
         direction="minimize",
@@ -111,7 +111,7 @@ if __name__ == "__main__":
 
 
     print("\nSaving optuna plots...")
-    plots_dir = os.path.join("optuna_results_3d", "optuna_plots")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_3d")
     os.makedirs(plots_dir, exist_ok=True)
 
     from optuna.visualization import (
