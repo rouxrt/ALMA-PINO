@@ -123,7 +123,10 @@ The framework is highly modular and can be dynamically configured using the foll
 ###  FNO Architecture
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--modes` | `int` | `8` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes` (FNO2D)| `int` | `8` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_x` (FNO3D)| `int` | `8` | Number of Fourier frequencies (spatial modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_y` (FNO3D)| `int` | `8` | Number of Fourier frequencies (spatial modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_z` (FNO3D)| `int` | `6` | Number of Fourier frequencies (spectral modes) to retain. Governs the low-pass filtering capacity of the operator. |
 | `--width` | `int` | `32` | Latent dimension (channel width) of the neural operator. |
 | `--fourier_layers`| `int` | `4` | Total number of sequential Fourier layers in the network. |
 
@@ -139,16 +142,21 @@ The framework is highly modular and can be dynamically configured using the foll
 | :--- | :--- | :--- | :--- |
 | `--lambda_data` | `float`| `1.0` | Multiplier for the primary data-fidelity loss component. |
 | `--lambda_phys` | `float`| `0.5` | Multiplier for the Forward Physics Loss (MSE in Fourier space). |
-| `--lambda_spec` | `float`| `0.1` | Multiplier for the 1D Total Variation Spectral Continuity Loss. |
+| `--lambda_spec` | `float`| `0.0` | Multiplier for the  Spectral Continuity Loss. |
 | `--alpha` | `float`| `0.03` | Balancing factor within the data loss. Lower values (e.g., `0.03`) heavily favor MAE (L1) over MS-SSIM to preserve sparse background dynamics. |
 ## Usage
  
 ### Training Loop
- 
+
+#### FNO2D
 ```bash
-python train.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --lambda_phys 10.0   --lambda_spec 10.0   --alpha 0.03
+python train_fno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --lambda_phys 10.0   --lambda_spec 10.0   --alpha 0.03
 ```
 
+#### FNO3D
+```bash
+python train_fno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x 16  --modes_y 16  --modes_z 8  --lambda_phys 10.0   --lambda_spec 10.0   --alpha 0.03
+```
 ---
  
 ## Repository Structure
@@ -158,12 +166,14 @@ python train.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --la
 │   └── mock_dataset.py
 ├── models/
 │   ├── basics.py
-│   ├── fno.py           # Fourier Neural Operator (2D/3D) architecture definition
-│   ├── losses.py        # Physics-Informed Loss (PILoss) implementation
+│   ├── fno2d.py         # Fourier Neural Operator architecture in 2 dimension (spatial dimensions)
+│   ├── fno3d.py         # Fourier Neural Operator architecture in 3 dimension (spatial + spectral dimensions)
+│   ├── losses.py        # Physics-Informed Loss implementation
 │   └── utils.py        
 ├── visualize/
 │   └── plot.py      # Monitoring functions for loss curves and spectral profiles
-├── train.py             # Main script for training and curriculum scheduling
+├── train_fno2d.py       # Main script for training FNO2D
+├── train_fno3d.py       # Main script for training FNO3D
 ├── requirements.txt     # Deterministic project dependencies
 └── README.md            # Technical documentation of the framework
 ```
@@ -172,7 +182,7 @@ python train.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --la
 
  
 ## Future Work
-- [ ] Native extension of the neural operator to the third dimension (**FNO3D**) with spectral convolution kernels to simulate the 3D diffraction PSF of radio telescopes.
+- [ ] Including Test Time Optimization (TTO) for physics informed models.
 - [ ] Zero-shot testing and validation on real datacubes from the ALMA *Science Archive* (Restoration of real substellar and high-redshift galactic sources).
 - [ ] Integration of kinematic constraints based on the differential calculus of higher-order astronomical moments (Moment 1 for local velocity and Moment 2 for velocity dispersion).
  
