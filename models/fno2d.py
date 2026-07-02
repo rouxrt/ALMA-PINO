@@ -53,7 +53,7 @@ class FNO2d(nn.Module):
     def forward(self, x):
         '''
         Args:
-            - x : (batch_size, canali, size_x, size_y) <-- ORA ACCETTA IL FORMATO PYTORCH STANDARD
+            - x : (batch_size, channels, size_x, size_y) 
         Returns:
             - x: (batch_size, out_dim, size_x, size_y)
         '''
