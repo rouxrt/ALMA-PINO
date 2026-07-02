@@ -5,3 +5,6 @@ torch>=2.5
 torchvision>=0.20
 torchaudio>=2.5
 torchmetrics==1.9.0
+optuna
+plotly
+scikit-learn
