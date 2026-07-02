@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import os
+import optuna
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno2d import FNO2d
@@ -113,7 +114,11 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 def main(args):
     set_seed(42)
     os.makedirs('results_2d', exist_ok=True)
-    sys.stdout = Logger(f"results_2d/training_log.txt")
+    tuning_mode = hasattr(args, 'trial') and args.trial is not None
+
+    if not tuning_mode:
+        sys.stdout = Logger(f"results_2d/training_log.txt")
+
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
@@ -166,6 +171,7 @@ def main(args):
     )
 
     best_val_loss = float('inf')
+    best_val_flux_error = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'fno2d.pth')
 
@@ -176,7 +182,14 @@ def main(args):
     for epoch in range(1, args.epochs + 1):
 
         tot_loss, data_loss, l1, msssim, phys_loss, loss_spec = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch)
-        val_tot, val_data, val_phys, val_spec, _, _, _ = evaluate_model(model, val_dataloader, criterion, device)
+        val_tot, val_data, val_phys, val_spec, _, _, val_flux = evaluate_model(model, val_dataloader, criterion, device)
+
+        #oputna pruner
+        if tuning_mode:
+            args.trial.report(val_tot, epoch)
+            if args.trial.should_prune():
+                print(f"Trial pruned by Optuna at epoch {epoch}")
+                raise optuna.exceptions.TrialPruned()
 
         scheduler.step()
 
@@ -197,10 +210,11 @@ def main(args):
 
         if val_tot < best_val_loss:
             best_val_loss = val_tot
+            best_val_flux_error = val_flux
             torch.save(model.state_dict(), best_model_path)
             print(f"New best model saved with Val Loss: {best_val_loss:.5f}")
         
-        if epoch % 5 == 0 or epoch == args.epochs:
+        if (epoch % 5 == 0 or epoch == args.epochs) and not tuning_mode:
             sample_dirty, sample_clean, sample_psf = next(iter(val_dataloader))
             model.eval()
             with torch.no_grad():
@@ -209,20 +223,22 @@ def main(args):
             save_predictions(sample_dirty, sample_clean, sample_pred, 
                              epoch, tot_loss, data_loss, phys_loss, output_dir="results_2d/predictions")
     
-    plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results_2d/loss_history.png")
+    if not tuning_mode:
+        plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results_2d/loss_history.png")
 
     print("\nTraining Completed!")
     print("\n" + "="*50)
     print("Evaluating best model on test set...")
 
     model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(model, test_dataloader, criterion, device, show_datacube=True)
+    test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(model, test_dataloader, criterion, device, show_datacube=not tuning_mode)
 
     print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f} | Spec: {test_spec:.5f})")
     print(f"Test PSNR: {test_psnr:.5f} dB")
     print(f"Test SSIM: {test_ssim:.5f}")
     print(f"Test Flux Error: {test_flux_error:.5f}%")
 
+    return best_val_loss, best_val_flux_error
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Training PI-FNO for ALMA data")
