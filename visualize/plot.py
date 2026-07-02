@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import os
 import sys
-
+import torch
 
 def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, output_dir="results"):
     os.makedirs(output_dir, exist_ok=True)
@@ -70,6 +70,53 @@ def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
         plt.savefig(os.path.join(output_dir, f'channel_{c:02d}.png'), dpi=150)
         plt.close()
 
+
+
+def plot_spectral_profile(clean, pred, sample_idx=0, output_dir="results"):
+    if clean.dim() == 3:
+        clean = clean.unsqueeze(0)
+        pred = pred.unsqueeze(0)
+
+    c_cube = clean[sample_idx].detach().cpu()
+    p_cube = pred[sample_idx].detach().cpu()
+
+    flux_clean = c_cube.sum(dim=(1, 2)).numpy()
+    flux_pred = p_cube.sum(dim=(1, 2)).numpy()
+
+    spatial_map_clean = c_cube.sum(dim=0)
+    peak_idx = spatial_map_clean.argmax().item()
+    
+    x_peak = peak_idx // spatial_map_clean.shape[1]
+    y_peak = peak_idx % spatial_map_clean.shape[1]
+
+    peak_spectrum_clean = c_cube[:, x_peak, y_peak].numpy()
+    peak_spectrum_pred = p_cube[:, x_peak, y_peak].numpy()
+
+    channels = range(len(flux_clean))
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 5))
+
+    fig.suptitle("Spectral Diagnosis (Z-axis) - Ground Truth vs FNO3d Prediction", fontsize=15)
+
+    axes[0].plot(channels, flux_clean, label='Ground Truth', color='black', linestyle='--', marker='o')
+    axes[0].plot(channels, flux_pred, label='FNO3d Prediction', color='red', alpha=0.7, marker='x')
+    axes[0].set_title("Integrated Spatial Flux per Channel")
+    axes[0].set_xlabel("Channel Index (Z)")
+    axes[0].set_ylabel("Total Flux")
+    axes[0].grid(True, alpha=0.3)
+    axes[0].legend()
+
+    axes[1].plot(channels, peak_spectrum_clean, label='GT (Central Pixel)', color='black', linestyle='--', marker='o')
+    axes[1].plot(channels, peak_spectrum_pred, label='Pred (Central Pixel)', color='blue', alpha=0.7, marker='x')
+    axes[1].set_title(f"Spectral Profile at Peak Spatial Location (X={x_peak}, Y={y_peak})")
+    axes[1].set_xlabel("Channel Index (Z)")
+    axes[1].set_ylabel("Single Pixel Intensity")
+    axes[1].grid(True, alpha=0.3)
+    axes[1].legend()
+
+    plt.tight_layout()
+    plt.savefig(os.path.join(output_dir, f'spectral_profile_{sample_idx:02d}.png'), dpi=150)
+    plt.close()
 
 def plot_loss_history(history: dict, title: str, save_path: str):
 

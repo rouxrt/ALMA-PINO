@@ -47,9 +47,9 @@ class FNO3d(nn.Module):
                                  for in_size, out_size in zip(self.layers, self.layers[1:])])
 
         self.fc1 = nn.Linear(self.layers[-1], fc_dim)
-        self.fc2 = nn.Linear(fc_dim, out_dim)
+        self.fc2 = nn.Linear(fc_dim, self.layers[-1])
+        self.fc3 = nn.Linear(self.layers[-1], out_dim)
         self.act = _get_act(act)
-
     def forward(self, x):
         '''
         Args:
@@ -93,6 +93,8 @@ class FNO3d(nn.Module):
         x = self.fc1(x)
         x = self.act(x)
         x = self.fc2(x)
+        x = self.act(x)
+        x = self.fc3(x)
 
         x = x.permute(0, 4, 1, 2, 3)
         return x

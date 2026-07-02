@@ -9,7 +9,7 @@ from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno3d import FNO3d
 from models.losses import CombinedLoss
 from models.utils import Logger, set_seed
-from visualize.plot import save_predictions, plot_loss_history, visualize_datacube
+from visualize.plot import save_predictions, plot_loss_history, visualize_datacube, plot_spectral_profile
 from torchmetrics.functional.image import peak_signal_noise_ratio as psnr
 from torchmetrics.functional.image import structural_similarity_index_measure as ssim
 
@@ -88,6 +88,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 
             if show_datacube:
                 visualize_datacube(dirty, clean, pred_clean, output_dir="results_3d/datacube_visualization")
+                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="results_3d/")
                 show_datacube = False
 
             loss_total, loss_data, l1, msssim, loss_phys, loss_spec = criterion(pred_clean, dirty, clean, psf)
@@ -263,7 +264,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--width', type=int, default=16, help='Latent dimension (width)')
     parser.add_argument('--fourier_layers', type=int, default=4, help='Number of Spectral Convolution Layers')
-    parser.add_argument('--pad_ratio', type=float, default=0.1, help='Padding ratio for 3D boundary protection')
+    parser.add_argument('--pad_ratio', type=float, default=0.0, help='Padding ratio for 3D boundary protection')
     
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')

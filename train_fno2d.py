@@ -9,7 +9,7 @@ from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno2d import FNO2d
 from models.losses import PILoss, CombinedLoss
 from models.utils import Logger, set_seed
-from visualize.plot import save_predictions, plot_loss_history, visualize_datacube
+from visualize.plot import save_predictions, plot_loss_history, visualize_datacube, plot_spectral_profile
 from torchmetrics.functional.image import peak_signal_noise_ratio as psnr
 from torchmetrics.functional.image import structural_similarity_index_measure as ssim
 
@@ -80,6 +80,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 
             if show_datacube:
                 visualize_datacube(dirty, clean, pred_clean, output_dir="results_2d/visualizations")
+                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="results_2d/")
                 show_datacube = False
             loss_total, loss_data, l1, msssim, loss_phys, loss_spec = criterion(pred_clean, dirty, clean, psf)
 
