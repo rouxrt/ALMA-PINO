@@ -3,6 +3,7 @@ import sys
 import os
 from argparse import Namespace
 from train_fno3d import main
+from models.utils import Logger
 
 def objective(trial):
 
@@ -63,7 +64,9 @@ def objective(trial):
 
 if __name__ == "__main__":
     os.makedirs('optuna_results', exist_ok=True)
-    
+    plots_dir = os.path.join("optuna_results", "optuna_plots_3d")
+    sys.stdout = Logger(f"optuna_results/optuna_plots_3d/log.txt")
+
     study = optuna.create_study(
         direction="minimize",
         pruner=optuna.pruners.MedianPruner(
