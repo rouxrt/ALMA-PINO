@@ -6,22 +6,24 @@ from train_fno3d import main
 
 def objective(trial):
 
-    lr = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
+    lr = trial.suggest_float("lr", 5e-5, 1e-2, log=True)
 
     modes_xy = trial.suggest_categorical("modes_xy", [8, 12, 16])
     modes_z = trial.suggest_categorical("modes_z", [4, 6, 8])
 
-    alpha = trial.suggest_float("alpha", 0.01, 0.5)
+    alpha = trial.suggest_float("alpha", 0.0, 0.5)
 
-    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0)
+    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 20.0)
 
     batch_size = trial.suggest_categorical("batch_size", [4, 8, 16])
     
     width = trial.suggest_categorical("width", [16, 32, 64])
 
+    act = trial.suggest_categorical("act", ["gelu", "relu", "tanh", "leaky_relu"])
+
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
-    print(f"Parameters: LR={lr:.5f}, Modes_xy={modes_xy}, Modes_z={modes_z}, Alpha={alpha:.3f}, Phys={lambda_phys:.2f}, Width={width}, BS={batch_size}")
+    print(f"Parameters: LR={lr:.5f}, Modes_xy={modes_xy}, Modes_z={modes_z}, Alpha={alpha:.3f}, Phys={lambda_phys:.2f}, Width={width}, BS={batch_size}, Act={act}")
     print(f"{'='*60}\n")
 
     args = Namespace(
@@ -41,7 +43,8 @@ def objective(trial):
         lambda_data=1.0,
         lambda_phys=lambda_phys,  
         lambda_spec=0.0,
-        alpha=alpha,              
+        alpha=alpha,           
+        act=act,   
         trial=trial               
     )
 
@@ -64,7 +67,7 @@ if __name__ == "__main__":
     study = optuna.create_study(
         direction="minimize",
         pruner=optuna.pruners.MedianPruner(
-            n_startup_trials=3,   
+            n_startup_trials=10,   
             n_warmup_steps=5,     
             interval_steps=1      
         )
@@ -72,7 +75,7 @@ if __name__ == "__main__":
 
     print("Starting Bayesian Optimization with Optuna (TPE)...")
     
-    study.optimize(objective, n_trials=30)
+    study.optimize(objective, n_trials=100)
     
     print("\n" + "="*50)
     print("OPTIMIZATION COMPLETED SUCCESSFULLY!")
