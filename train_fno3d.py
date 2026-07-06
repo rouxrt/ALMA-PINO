@@ -298,6 +298,7 @@ if __name__ == '__main__':
     parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
     parser.add_argument('--lambda_spec', type=float, default=0.0, help='Weight of the Spectral Loss')
     parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor between L1 and MS-SSIM')
+    parser.add_argument('--act', type=str, default='gelu', choices=['gelu', 'relu', 'tanh', 'leaky_relu'], help='Activation function')
 
     args = parser.parse_args()
     main(args)
