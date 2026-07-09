@@ -1,6 +1,8 @@
 import optuna
 import sys
 import os
+import torch
+import gc
 from argparse import Namespace
 from train_fno3d import main
 from models.utils import Logger
@@ -11,7 +13,6 @@ def objective(trial):
 
     modes_xy = trial.suggest_categorical("modes_xy", [8, 12, 16])
     modes_z = trial.suggest_categorical("modes_z", [4, 6, 8])
-
     alpha = trial.suggest_float("alpha", 0.0, 0.5)
 
     lambda_phys = trial.suggest_float("lambda_phys", 0.1, 20.0)
@@ -20,11 +21,9 @@ def objective(trial):
     
     width = trial.suggest_categorical("width", [16, 32, 64])
 
-    act = trial.suggest_categorical("act", ["gelu", "relu", "tanh", "leaky_relu"])
-
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
-    print(f"Parameters: LR={lr:.5f}, Modes_xy={modes_xy}, Modes_z={modes_z}, Alpha={alpha:.3f}, Phys={lambda_phys:.2f}, Width={width}, BS={batch_size}, Act={act}")
+    print(f"Parameters: LR={lr:.5f}, Modes_xy={modes_xy}, Modes_z={modes_z}, Alpha={alpha:.3f}, Phys={lambda_phys:.2f}, Width={width}, BS={batch_size}")
     print(f"{'='*60}\n")
 
     args = Namespace(
@@ -45,7 +44,7 @@ def objective(trial):
         lambda_phys=lambda_phys,  
         lambda_spec=0.0,
         alpha=alpha,           
-        act=act,   
+        act="gelu",   
         trial=trial               
     )
 
@@ -59,6 +58,11 @@ def objective(trial):
             raise optuna.exceptions.TrialPruned()
         else:
             raise e
+    finally: 
+        if 'train_dataset' in locals(): del train_dataset
+        if 'train_dataloader' in locals(): del train_dataloader
+        torch.cuda.empty_cache()
+        gc.collect()
 
     return best_val_loss
 

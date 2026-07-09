@@ -1,6 +1,8 @@
 import optuna
 import sys
 import os
+import torch
+import gc
 from argparse import Namespace
 from train_fno2d import main
 
@@ -52,6 +54,11 @@ def objective(trial):
             raise optuna.exceptions.TrialPruned()
         else:
             raise e
+    finally: 
+        if 'train_dataset' in locals(): del train_dataset
+        if 'train_dataloader' in locals(): del train_dataloader
+        torch.cuda.empty_cache()
+        gc.collect()
 
     return best_val_loss
 
