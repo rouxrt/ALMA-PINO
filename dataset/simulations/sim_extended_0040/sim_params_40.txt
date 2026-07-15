@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: A1689-zD1
+Member OUID: "uid://A001/X145/X363"
+RA: 197.87479166666665 deg
+DEC: -1.3218611111111112 deg
+Band: 6.0
+Bandwidth 0.03101568 GHz
+Band Central Frequency: 217.435 GHz
+Pixel size: 0.8311540787538975 arcsec
+Beam Size: 0.8159495364076664 arcsec
+Fov: 26.59693052012472 arcsec
+Angular Resolution: 1.0104603613030174 arcsec
+Velocity Resolution: 2624.9365918406934 km / s
+Redshift: 0.8609246571098088
+Integration Time: 56999.44887 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.008502053981394298
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 5
+FWHM_y (pixels): 4
+Projection Angle: 53
+Line: CS(8–7) 765.08 - Frequency: 217.43330063593484 GHz - Flux: 0.30918357568534605 Jy  - Width (Channels): 15.819125632868124

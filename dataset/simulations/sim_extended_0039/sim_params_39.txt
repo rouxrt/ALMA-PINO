@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: az4-cosmos-6
+Member OUID: "uid://A001/X2fe/X7b6"
+RA: 150.11115999997142 deg
+DEC: 2.5239400000002896 deg
+Band: 6.0
+Bandwidth 0.5 GHz
+Band Central Frequency: 260.36 GHz
+Pixel size: 0.723511072811295 arcsec
+Beam Size: 0.3774305032426519 arcsec
+Fov: 23.15235432996144 arcsec
+Angular Resolution: 0.5268472016161971 arcsec
+Velocity Resolution: 36125.10082866709 km / s
+Redshift: 1.5284752462920226
+Integration Time: 57508.958301 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.013252159254448122
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 3
+FWHM_y (pixels): 3
+Projection Angle: 30
+Line: C18O(6–5) 455.23 - Frequency: 260.3583346824978 GHz - Flux: 1.9275958248047085 Jy  - Width (Channels): 3.0725957384405587

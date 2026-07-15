@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: J114637.9-001132
+Member OUID: "uid://A001/X2f7/X396"
+RA: 176.6582500000409 deg
+DEC: -0.1921666666667421 deg
+Band: 6.0
+Bandwidth 0.5 GHz
+Band Central Frequency: 240.89 GHz
+Pixel size: 0.7513984059770588 arcsec
+Beam Size: 0.40016833859068374 arcsec
+Fov: 24.04474899126588 arcsec
+Angular Resolution: 0.4883269690081819 arcsec
+Velocity Resolution: 38643.04144667225 km / s
+Redshift: 1.506269777489361
+Integration Time: 57532.08965 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.01080118961458755
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 9
+FWHM_y (pixels): 6
+Projection Angle: 177
+Line: CCH(7–6) 490.45 - Frequency: 240.890325228647 GHz - Flux: 1.3845431811963855 Jy  - Width (Channels): 2.7608560766817174

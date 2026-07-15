@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: ADFS-AzTEC32
+Member OUID: "uid://A001/X2fe/X755"
+RA: 71.62353000004981 deg
+DEC: -53.56259888890209 deg
+Band: 6.0
+Bandwidth 0.03101568 GHz
+Band Central Frequency: 254.14 GHz
+Pixel size: 0.6931695439007662 arcsec
+Beam Size: 0.38019454178577544 arcsec
+Fov: 22.18142540482452 arcsec
+Angular Resolution: 0.5088116617629932 arcsec
+Velocity Resolution: 2152.8633518552747 km / s
+Redshift: 1.6208181344721624
+Integration Time: 57523.814219 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.012481834998732677
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 8
+FWHM_y (pixels): 4
+Projection Angle: 99
+Line: 13CO(6–5) 453.5 - Frequency: 254.1400227172073 GHz - Flux: 1.2463367078950094 Jy  - Width (Channels): 16.0

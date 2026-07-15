@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: ngc4418
+Member OUID: "uid://A002/X314ea1/X200"
+RA: 186.727617 deg
+DEC: -0.877642 deg
+Band: 6.0
+Bandwidth 0.015624959999999999 GHz
+Band Central Frequency: 254.16 GHz
+Pixel size: 0.6932812566820837 arcsec
+Beam Size: 0.6047858353369564 arcsec
+Fov: 22.18500021382668 arcsec
+Angular Resolution: 0.7043784805894268 arcsec
+Velocity Resolution: 1077.3370203768625 km / s
+Redshift: 1.4812276094522403
+Integration Time: 56293.505999 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.012481834998732677
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 8
+FWHM_y (pixels): 3
+Projection Angle: 124
+Line: H2O+ 631 - Frequency: 254.16074703451758 GHz - Flux: 6.500360792911308 Jy  - Width (Channels): 16.0

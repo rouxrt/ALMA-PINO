@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: Bo15Hz27
+Member OUID: "uid://A001/X2fb/X380"
+RA: 53.15556249998223 deg
+DEC: -27.773694444449177 deg
+Band: 6.0
+Bandwidth 0.125 GHz
+Band Central Frequency: 244.085 GHz
+Pixel size: 0.7720123322284312 arcsec
+Beam Size: 0.3598090437873943 arcsec
+Fov: 24.7043946313098 arcsec
+Angular Resolution: 0.4514746899476927 arcsec
+Velocity Resolution: 9632.404883514424 km / s
+Redshift: 1.9480935582918568
+Integration Time: 57562.51875 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.011111335531997604
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 8
+FWHM_y (pixels): 7
+Projection Angle: 34
+Line: H2O+ 721 - Frequency: 244.085015186112 GHz - Flux: 3.3489750655866493 Jy  - Width (Channels): 5.556764854935014
