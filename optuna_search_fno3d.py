@@ -6,6 +6,7 @@ import gc
 from argparse import Namespace
 from train_fno3d import main
 from models.utils import Logger
+from optuna.samplers import TPESampler
 
 def objective(trial):
 
@@ -37,7 +38,7 @@ def objective(trial):
         width=width,
         fourier_layers=4,
         pad_ratio=0.0,
-        epochs=30,                
+        epochs=100,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
@@ -51,7 +52,7 @@ def objective(trial):
     try:
         best_val_loss, best_val_flux = main(args)
 
-        trial.set_user_attr("flux_error", best_val_flux)
+        trial.set_user_attr("val_loss", best_val_loss)
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
             print("\n[!] GPU Out of Memory. Skipping trial.\n")
@@ -64,19 +65,22 @@ def objective(trial):
         torch.cuda.empty_cache()
         gc.collect()
 
-    return best_val_loss
+    return best_val_flux
 
 if __name__ == "__main__":
     os.makedirs('optuna_results', exist_ok=True)
     plots_dir = os.path.join("optuna_results", "optuna_plots_3d")
     sys.stdout = Logger(f"optuna_results/optuna_plots_3d/log.txt")
 
+    sampler = TPESampler(seed=42)
+
     study = optuna.create_study(
+        sampler=sampler,
         direction="minimize",
-        pruner=optuna.pruners.MedianPruner(
-            n_startup_trials=10,   
-            n_warmup_steps=5,     
-            interval_steps=1      
+        pruner=optuna.pruners.HyperbandPruner(
+            min_resource=25,    
+            max_resource=100,   
+            reduction_factor=3 
         )
     )
 
@@ -88,9 +92,9 @@ if __name__ == "__main__":
     print("OPTIMIZATION COMPLETED SUCCESSFULLY!")
 
 
-    print(f"Best Loss Achieved (Validation): {study.best_value:.5f}")
-    best_flux = study.best_trial.user_attrs.get("flux_error", "N/A")
-    print(f"Flux Error of the winning model: {best_flux:.3f}%")
+    print(f"Best Flux Error Achieved (Validation): {study.best_value:.5f}")
+    best_val_loss = study.best_trial.user_attrs.get("val_loss", "N/A")
+    print(f"Validation Loss of the winning model: {best_val_loss:.5f}")
     print("Hyperparameters of the winning configuration:")
     for key, value in study.best_params.items():
         print(f"    --{key}: {value}")
@@ -108,8 +112,8 @@ if __name__ == "__main__":
     
     for rank in range(top_n):
         t = completed_trials[rank]
-        val_loss = t.value
-        flux_err = t.user_attrs.get('flux_error', float('nan'))
+        flux_err = t.value
+        val_loss = t.user_attrs.get('val_loss', float('nan'))
         
         print(f"\n[Rank {rank + 1}] - Trial ID: {t.number}")
         print(f"    Val Loss   : {val_loss:.6f}")
