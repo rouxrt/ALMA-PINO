@@ -5,6 +5,7 @@ __pycache__/
 .vscode/
 
 results/
+optuna_results/
 results_3d/
 results_2d/
 checkpoints/

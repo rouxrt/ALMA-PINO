@@ -4,6 +4,7 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import os
+import optuna
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from models.fno2d import FNO2d
@@ -13,7 +14,7 @@ from visualize.plot import save_predictions, plot_loss_history, visualize_datacu
 from torchmetrics.functional.image import peak_signal_noise_ratio as psnr
 from torchmetrics.functional.image import structural_similarity_index_measure as ssim
 
-def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
+def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuning_mode=False):
     model.train()
     running_total_loss = 0.0
     running_data_loss = 0.0
@@ -31,7 +32,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch):
 
         pred_clean = model(dirty)
 
-        if epoch % 10 == 0 and batch_idx == 0:
+        if (epoch % 10 == 0 and batch_idx == 0) and not tuning_mode:
             min_val = pred_clean.min().item()
             neg_percent = (pred_clean < 0).float().mean().item() * 100
             print(f"  [Debug] Min value: {min_val:.6f} | Negative pixels: {neg_percent:.1f}%")
@@ -113,16 +114,22 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 def main(args):
     set_seed(42)
     os.makedirs('results_2d', exist_ok=True)
-    sys.stdout = Logger(f"results_2d/training_log.txt")
+    tuning_mode = hasattr(args, 'trial') and args.trial is not None
+
+    if not tuning_mode:
+        sys.stdout = Logger(f"results_2d/training_log.txt")
+
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
-    print(f"Starting training on device: {device}")
-    print(f"GPU Name: {name_device}")
+    if not tuning_mode:
+        print(f"Starting training on device: {device}")
+        print(f"GPU Name: {name_device}")
 
     history_loss = {"train": [], "val": [], "train_data": [], "train_l1": [], "train_msssim": [], "train_phys": [], "train_spec": [], "val_data": [], "val_phys": [], "val_spec": []}
-
-    print("Loading Mock Dataset...")
+    
+    if not tuning_mode:
+        print("Loading Mock Dataset...")
     train_dataset = MockGalaxyDatacubeDataset(
         num_samples=args.num_samples, 
         channels=args.channels, 
@@ -145,7 +152,8 @@ def main(args):
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
-    print("Initializing Fourier Neural Operator...")
+    if not tuning_mode:
+        print("Initializing Fourier Neural Operator...")
     
     num_fourier_layers = args.fourier_layers
     
@@ -154,7 +162,8 @@ def main(args):
         modes2=[args.modes] * num_fourier_layers,  
         width=args.width, 
         in_dim=args.channels + 2, 
-        out_dim=args.channels
+        out_dim=args.channels,
+        act=args.act
     ).to(device)
 
     criterion = CombinedLoss(lambda_data=args.lambda_data, lambda_phys=args.lambda_phys, lambda_spec=args.lambda_spec, alpha=args.alpha, channels=args.channels).to(device)
@@ -166,24 +175,33 @@ def main(args):
     )
 
     best_val_loss = float('inf')
+    best_val_flux_error = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'fno2d.pth')
 
     fixed_val_batch = next(iter(val_dataloader))
 
-
-    print("Starting training loop...\n")
+    if not tuning_mode:
+        print("Starting training loop...\n")
     for epoch in range(1, args.epochs + 1):
 
-        tot_loss, data_loss, l1, msssim, phys_loss, loss_spec = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch)
-        val_tot, val_data, val_phys, val_spec, _, _, _ = evaluate_model(model, val_dataloader, criterion, device)
+        tot_loss, data_loss, l1, msssim, phys_loss, loss_spec = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch, tuning_mode)
+        val_tot, val_data, val_phys, val_spec, _, _, val_flux = evaluate_model(model, val_dataloader, criterion, device)
+
+        #oputna pruner
+        if tuning_mode:
+            args.trial.report(val_tot, epoch)
+            if args.trial.should_prune():
+                print(f"Trial pruned by Optuna at epoch {epoch}")
+                raise optuna.exceptions.TrialPruned()
 
         scheduler.step()
-
-        print(f"Epoch [{epoch}/{args.epochs}] | "
-              f"Train Loss: {tot_loss:.5f} (Data: {data_loss:.5f} | Phys: {phys_loss:.5f} | Spec: {loss_spec:.5f}) |  "
-              f"Val Loss: {val_tot:.5f} (Data: {val_data:.5f} | Phys: {val_phys:.5f} | Spec: {val_spec:.5f})")
         
+        if not tuning_mode:
+            print(f"Epoch [{epoch}/{args.epochs}] | "
+                  f"Train Loss: {tot_loss:.5f} (Data: {data_loss:.5f} | Phys: {phys_loss:.5f} | Spec: {loss_spec:.5f}) |  "
+                  f"Val Loss: {val_tot:.5f} (Data: {val_data:.5f} | Phys: {val_phys:.5f} | Spec: {val_spec:.5f})")
+            
         history_loss["train"].append(tot_loss)
         history_loss["val"].append(val_tot)
         history_loss["train_data"].append(args.lambda_data * data_loss)
@@ -197,10 +215,12 @@ def main(args):
 
         if val_tot < best_val_loss:
             best_val_loss = val_tot
+            best_val_flux_error = val_flux
             torch.save(model.state_dict(), best_model_path)
-            print(f"New best model saved with Val Loss: {best_val_loss:.5f}")
+            if not tuning_mode:
+                print(f"New best model saved with Val Loss: {best_val_loss:.5f}")
         
-        if epoch % 5 == 0 or epoch == args.epochs:
+        if (epoch % 5 == 0 or epoch == args.epochs) and not tuning_mode:
             sample_dirty, sample_clean, sample_psf = next(iter(val_dataloader))
             model.eval()
             with torch.no_grad():
@@ -209,20 +229,22 @@ def main(args):
             save_predictions(sample_dirty, sample_clean, sample_pred, 
                              epoch, tot_loss, data_loss, phys_loss, output_dir="results_2d/predictions")
     
-    plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results_2d/loss_history.png")
+    if not tuning_mode:
+        plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="results_2d/loss_history.png")
 
-    print("\nTraining Completed!")
-    print("\n" + "="*50)
-    print("Evaluating best model on test set...")
+        print("\nTraining Completed!")
+        print("\n" + "="*50)
+        print("Evaluating best model on test set...")
 
-    model.load_state_dict(torch.load(best_model_path, weights_only=True))
-    test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(model, test_dataloader, criterion, device, show_datacube=True)
+        model.load_state_dict(torch.load(best_model_path, weights_only=True))
+        test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(model, test_dataloader, criterion, device, show_datacube=not tuning_mode)
 
-    print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f} | Spec: {test_spec:.5f})")
-    print(f"Test PSNR: {test_psnr:.5f} dB")
-    print(f"Test SSIM: {test_ssim:.5f}")
-    print(f"Test Flux Error: {test_flux_error:.5f}%")
+        print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f} | Spec: {test_spec:.5f})")
+        print(f"Test PSNR: {test_psnr:.5f} dB")
+        print(f"Test SSIM: {test_ssim:.5f}")
+        print(f"Test Flux Error: {test_flux_error:.5f}%")
 
+    return best_val_loss, best_val_flux_error
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Training PI-FNO for ALMA data")
@@ -244,6 +266,7 @@ if __name__ == '__main__':
     parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
     parser.add_argument('--lambda_spec', type=float, default=0.0, help='Weight of the Spectral Loss')
     parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor for combining L1 and MS-SSIM in the data loss')
+    parser.add_argument('--act', type=str, default='gelu', choices=['gelu', 'relu', 'tanh', 'leaky_relu'], help='Activation function')
 
     args = parser.parse_args()
     
