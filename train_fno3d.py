@@ -2,11 +2,12 @@ import argparse
 import sys
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 import os
 import optuna
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
+from dataset.ALMA_dataset import ALMADataset
 from models.fno3d import FNO3d
 from models.losses import CombinedLoss
 from models.utils import Logger, set_seed
@@ -140,27 +141,47 @@ def main(args):
         "train_msssim": [], "train_phys": [], "train_spec": [], 
         "val_data": [], "val_phys": [], "val_spec": []
     }
-    if not tuning_mode:
-        print("Loading Mock Dataset for 3D processing...")
-    train_dataset = MockGalaxyDatacubeDataset(
-        num_samples=args.num_samples, 
-        channels=args.channels, 
-        size=args.img_size,
-        extended_source=args.extended_source
-    )
-    val_dataset = MockGalaxyDatacubeDataset(
-        num_samples=args.num_samples // 5,
-        channels=args.channels,
-        size=args.img_size,
-        extended_source=args.extended_source
-    )
-    test_dataset = MockGalaxyDatacubeDataset(
-        num_samples=args.num_samples // 5,
-        channels=args.channels,
-        size=args.img_size,
-        extended_source=args.extended_source
-    )
+    # if not tuning_mode:
+    #     print("Loading Mock Dataset for 3D processing...")
+    # train_dataset = MockGalaxyDatacubeDataset(
+    #     num_samples=args.num_samples, 
+    #     channels=args.channels, 
+    #     size=args.img_size,
+    #     extended_source=args.extended_source
+    # )
+    # val_dataset = MockGalaxyDatacubeDataset(
+    #     num_samples=args.num_samples // 5,
+    #     channels=args.channels,
+    #     size=args.img_size,
+    #     extended_source=args.extended_source
+    # )
+    # test_dataset = MockGalaxyDatacubeDataset(
+    #     num_samples=args.num_samples // 5,
+    #     channels=args.channels,
+    #     size=args.img_size,
+    #     extended_source=args.extended_source
+    # )
     
+    # train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+    # val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+    # test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+
+    full_dataset = ALMADataset(args.dataset_path)
+    
+    total_size = len(full_dataset)
+    train_size = int(0.7 * total_size)
+    val_size = int(0.15 * total_size)
+    test_size = total_size - train_size - val_size
+    
+    train_dataset, val_dataset, test_dataset = random_split(
+        full_dataset, 
+        [train_size, val_size, test_size],
+        generator=torch.Generator().manual_seed(42) 
+    )
+
+    if not tuning_mode:
+        print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
+
     train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
     val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
     test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
@@ -277,6 +298,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Training PI-FNO3d for ALMA Datacubes")
     
+    parser.add_argument('--dataset_path', type=str, default='dataset/simulations', help='Path to the dataset directory')
     parser.add_argument('--num_samples', type=int, default=200, help='Number of samples')
     parser.add_argument('--channels', type=int, default=16, help='Z dimension (frequency slices)')
     parser.add_argument('--img_size', type=int, default=32, help='Spatial dimension XY')

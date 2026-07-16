@@ -28,6 +28,7 @@ def objective(trial):
     print(f"{'='*60}\n")
 
     args = Namespace(
+        dataset_path="dataset/simulations",
         num_samples=200,         
         channels=16,
         img_size=32,
@@ -36,13 +37,14 @@ def objective(trial):
         width=width,
         fourier_layers=4,
         pad_ratio=0.0,
-        epochs=30,                
+        epochs=100,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
         lambda_phys=lambda_phys,  
         lambda_spec=0.0,
-        alpha=alpha,              
+        alpha=alpha,       
+        act="gelu",       
         trial=trial               
     )
 
@@ -75,8 +77,8 @@ if __name__ == "__main__":
         sampler=sampler,
         direction="minimize",
         pruner=optuna.pruners.HyperbandPruner(
-            min_resource=5,    
-            max_resource=30,   
+            min_resource=25,    
+            max_resource=100,   
             reduction_factor=3 
         )
     )

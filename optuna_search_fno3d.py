@@ -28,6 +28,7 @@ def objective(trial):
     print(f"{'='*60}\n")
 
     args = Namespace(
+        dataset_path="dataset/simulations",
         num_samples=200,         
         channels=16,
         img_size=32,
