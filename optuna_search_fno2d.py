@@ -67,9 +67,10 @@ def objective(trial):
     return best_val_flux
 
 if __name__ == "__main__":
-    os.makedirs('optuna_results', exist_ok=True)
     plots_dir = os.path.join("optuna_results", "optuna_plots_2d")
-    sys.stdout = Logger(f"optuna_results/optuna_plots_2d/log.txt")
+    os.makedirs(plots_dir, exist_ok=True)
+    sys.stdout = Logger(os.path.join(plots_dir, "log.txt"))
+
 
     sampler = TPESampler(seed=42)
     
