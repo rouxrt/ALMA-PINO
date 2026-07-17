@@ -95,4 +95,4 @@ if __name__ == "__main__":
         plt.tight_layout()
         plt.show()
     else:
-        print("Cartella simulazioni non trovata. Modifica il path per testare.")
+        print("Simulations folder not found. Modify the path to test.")

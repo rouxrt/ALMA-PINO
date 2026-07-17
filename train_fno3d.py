@@ -72,11 +72,13 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     model.eval() 
     running_total_loss = 0.0
     running_data_loss = 0.0
+    running_l1_raw = 0.0
     running_phys_loss = 0.0
     running_spec_loss = 0.0
     running_psnr = 0.0
     running_ssim = 0.0
     running_flux_error = 0.0
+    total_samples = 0
 
     with torch.no_grad(): 
         for dirty, clean, psf in dataloader:
@@ -98,6 +100,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 
             running_total_loss += loss_total.item()
             running_data_loss += loss_data.item()
+            running_l1_raw += l1.item()
             running_phys_loss += loss_phys.item()
             running_spec_loss += loss_spec.item()
 
@@ -108,19 +111,39 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
                 running_psnr += batch_psnr.item()
                 running_ssim += batch_ssim.item()
 
-            flux_pred = pred_clean.sum(dim=(1,2,3))
-            flux_clean = clean.sum(dim=(1,2,3))
-            flux_error = torch.abs(flux_pred - flux_clean) / (flux_clean + 1e-8)
-            running_flux_error += flux_error.mean().item() * 100
+            # flux_pred = pred_clean.sum(dim=(1,2,3))
+            # flux_clean = clean.sum(dim=(1,2,3))
+            # flux_error = torch.abs(flux_pred - flux_clean) / (flux_clean + 1e-8)
+            # running_flux_error += flux_error.mean().item() * 100
+            
+            #masked flux error calculation
+            for i in range(clean.size(0)):
+                sample_clean = clean[i]
+                sample_pred = pred_clean[i]
+
+                mask = sample_clean > 1e-6
+
+                true_flux = sample_clean[mask].sum()
+                pred_flux = sample_pred[mask].sum()
+
+                if true_flux > 0:
+                    err = torch.abs(pred_flux - true_flux) / true_flux
+                    running_flux_error += err.item() * 100
+                    
+                else:
+                    running_flux_error += 0.0
+                
+                total_samples += 1
 
     num_batches = len(dataloader)
     return (running_total_loss / num_batches, 
             running_data_loss / num_batches, 
+            running_l1_raw / num_batches,
             running_phys_loss / num_batches,
             running_spec_loss / num_batches,
             running_psnr / num_batches,
             running_ssim / num_batches,
-            running_flux_error / num_batches)
+            running_flux_error / total_samples if total_samples > 0 else 0.0)
 
 def main(args):
     set_seed(42)
@@ -217,6 +240,7 @@ def main(args):
     )
 
     best_val_loss = float('inf')
+    best_val_l1_raw = float('inf')
     best_val_flux_error = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'fno3d.pth')
@@ -228,16 +252,16 @@ def main(args):
         tot_loss, data_loss, l1, msssim, phys_loss, loss_spec = train_one_epoch(
             model, train_dataloader, criterion, optimizer, device, epoch, tuning_mode=tuning_mode
         )
-        val_tot, val_data, val_phys, val_spec, _, _, val_flux = evaluate_model(
+        val_tot, val_data, val_l1_raw, val_phys, val_spec, _, _, val_flux = evaluate_model(
             model, val_dataloader, criterion, device
         )
 
         #oputna pruner
-        if tuning_mode:
-            args.trial.report(val_tot, epoch)
-            if args.trial.should_prune():
-                print(f"Trial pruned by Optuna at epoch {epoch}")
-                raise optuna.exceptions.TrialPruned()
+        # if tuning_mode:
+        #     args.trial.report(val_flux, epoch)
+        #     if args.trial.should_prune():
+        #         print(f"Trial pruned by Optuna at epoch {epoch}")
+        #         raise optuna.exceptions.TrialPruned()
 
         scheduler.step()
         
@@ -259,6 +283,7 @@ def main(args):
 
         if val_tot < best_val_loss:
             best_val_loss = val_tot
+            best_val_l1_raw = val_l1_raw
             best_val_flux_error = val_flux
             torch.save(model.state_dict(), best_model_path)
             if not tuning_mode:
@@ -284,7 +309,7 @@ def main(args):
     
 
         model.load_state_dict(torch.load(best_model_path, map_location=device, weights_only=True))
-        test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(
+        test_tot, test_data, _, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(
             model, test_dataloader, criterion, device, show_datacube=not tuning_mode
         )
 
@@ -293,7 +318,7 @@ def main(args):
         print(f"Test SSIM: {test_ssim:.5f}")
         print(f"Test Flux Error: {test_flux_error:.5f}%")
 
-    return best_val_loss, best_val_flux_error
+    return best_val_l1_raw, best_val_flux_error
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Training PI-FNO3d for ALMA Datacubes")
@@ -310,7 +335,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--width', type=int, default=16, help='Latent dimension (width)')
     parser.add_argument('--fourier_layers', type=int, default=4, help='Number of Spectral Convolution Layers')
-    parser.add_argument('--pad_ratio', type=float, default=0.0, help='Padding ratio for 3D boundary protection')
+    parser.add_argument('--pad_ratio', type=float, default=0.1, help='Padding ratio for 3D boundary protection')
     
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
