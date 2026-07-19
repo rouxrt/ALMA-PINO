@@ -3,66 +3,41 @@ import torch.nn as nn
 import torch.fft
 from pytorch_msssim import MS_SSIM, SSIM
 
-class PILoss(nn.Module):
-    """
-    Physics-Informed Loss for Optical Deconvolution.
-    Combine Data Loss (MSE) with Physics Loss (Fredholm Integral Equation through FFT).
-    """
-    def __init__(self, lambda_data=1.0, lambda_phys=1.0):
+    
+class DataLoss(nn.Module): 
+    def __init__(self, lambda_data=1.0, alpha=0.84, channels=64):
         super().__init__()
         self.lambda_data = lambda_data
-        self.lambda_phys = lambda_phys
-        self.mse = nn.MSELoss(reduction='sum')
-        self.mae = nn.L1Loss(reduction='sum')
+        self.alpha = alpha
+        
+        self.l1_loss = nn.L1Loss()
+        self.ssim_loss = SSIM(data_range=1.0, size_average=True, channel=channels, win_size=11)
+
+        self.mse_phys = nn.MSELoss()
 
     def forward(self, pred_clean, dirty_image, clean_gt, psf):
-        """
-        pred_clean: Predicted output [Batch, Channels, X, Y]
-        dirty_image: Dirty original input (from telescope) [Batch, Channels, X, Y]
-        clean_gt: Clean Ground Truth [Batch, Channels, X, Y]
-        psf: Telescope kernel (Dirty Beam) [Batch, Channels, X, Y]
-        """
         
-        loss_data = self.mae(pred_clean, clean_gt)
+        batch_max = clean_gt.max().clamp(min=1e-8)
 
-        if self.lambda_phys == 0.0:
-            return loss_data, loss_data, torch.tensor(0.0, device=pred_clean.device)
+        #normalize to [0,1] in order to have same scale for L1, SSIM and physics loss
+        pred_norm = pred_clean / batch_max
+        gt_norm = clean_gt / batch_max
+        dirty_norm = dirty_image / batch_max
 
-        
-        # Astronomical PSFs (e.g., from ALMA) are typically generated with the brightest 
-        # peak at the geometric center of the image. However, the FFT algorithm assumes 
-        # the spatial origin (0,0) is located at the top-left corner (index [0,0]).
-        # 
-        # If we compute the FFT on a centered PSF, the Convolution Theorem will induce 
-        # an unwanted linear phase shift, causing the resulting image to translate by 
-        # half the grid size (circular shift).
-        # 
-        # To prevent this, we use `ifftshift` to "roll" the PSF, wrapping the central 
-        # peak to the top-left corner before moving into the frequency domain.
-        psf_shifted = torch.fft.ifftshift(psf, dim=(-2, -1))
-        
-        pred_fft = torch.fft.rfft2(pred_clean)
-        psf_fft = torch.fft.rfft2(psf_shifted)
-        
-        simulated_dirty_fft = pred_fft * psf_fft
-        
-        # s=pred_clean.shape[-2:] ensure that it returns to its original shape
-        simulated_dirty = torch.fft.irfft2(simulated_dirty_fft, s=pred_clean.shape[-2:])
-        
-        loss_phys = self.mse(simulated_dirty, dirty_image)
+        l1_norm = self.l1_loss(pred_norm, gt_norm)
 
-        loss_total = (self.lambda_data * loss_data) + (self.lambda_phys * loss_phys)
+        ssim_val = self.ssim_loss(pred_norm, gt_norm)
+        ssim_norm = 1.0 - ssim_val
 
-        return loss_total, loss_data, loss_phys
-    
+        loss_data_norm = (self.alpha * ssim_norm) + ((1 - self.alpha) * l1_norm)
 
+        return  loss_data_norm, l1_norm, ssim_norm
 
 class CombinedLoss(nn.Module): 
-    def __init__(self, lambda_data=1.0, lambda_phys=1.0, lambda_spec=0.1, alpha=0.84, channels=64):
+    def __init__(self, lambda_data=1.0, lambda_phys=1.0, alpha=0.84, channels=64):
         super().__init__()
         self.lambda_data = lambda_data
         self.lambda_phys = lambda_phys
-        self.lambda_spec = lambda_spec
         self.alpha = alpha
         
         self.l1_loss = nn.L1Loss()
@@ -94,33 +69,55 @@ class CombinedLoss(nn.Module):
         
         loss_phys_norm = self.mse_phys(simulated_dirty_norm, dirty_norm) 
 
-        diff_pred = pred_norm[:, 1:, :, :] - pred_norm[:, :-1, :, :]
-        diff_gt = gt_norm[:, 1:, :, :] - gt_norm[:, :-1, :, :]
-        
-        loss_spec_norm = self.mse_phys(diff_pred, diff_gt)
+        loss_total_norm = (self.lambda_data * loss_data_norm) + (self.lambda_phys * loss_phys_norm)
 
-        loss_total_norm = (self.lambda_data * loss_data_norm) + (self.lambda_phys * loss_phys_norm) + (self.lambda_spec * loss_spec_norm)
-
-        return loss_total_norm, loss_data_norm, l1_norm, ssim_norm, loss_phys_norm, loss_spec_norm
+        return loss_total_norm, loss_data_norm, l1_norm, ssim_norm, loss_phys_norm
 
 
+# class CombinedLoss(nn.Module): 
+#     def __init__(self, lambda_data=1.0, lambda_phys=1.0, lambda_spec=0.1, alpha=0.84, channels=64):
+#         super().__init__()
+#         self.lambda_data = lambda_data
+#         self.lambda_phys = lambda_phys
+#         self.lambda_spec = lambda_spec
+#         self.alpha = alpha
 
-if __name__ == "__main__":
-    batch_size, canali, size = 4, 16, 32
-    
-    pred_clean = torch.randn(batch_size, canali, size, size, requires_grad=True)
-    dirty_image = torch.randn(batch_size, canali, size, size)
-    clean_gt = torch.randn(batch_size, canali, size, size)
-    
-    psf = torch.randn(batch_size, canali, size, size)
-    
-    loss_fn_data = PILoss(lambda_data=1.0, lambda_phys=0.0)
-    tot1, data1, phys1 = loss_fn_data(pred_clean, dirty_image, clean_gt, psf)
-    print(f"Test Only Data -> Total: {tot1.item():.4f}, Physics: {phys1.item():.4f}")
-    
-    loss_fn_phys = PILoss(lambda_data=1.0, lambda_phys=0.1)
-    tot2, data2, phys2 = loss_fn_phys(pred_clean, dirty_image, clean_gt, psf)
-    print(f"Test PI-FNO    -> Total: {tot2.item():.4f}, Physics: {phys2.item():.4f}")
-    
-    tot2.backward()
-    print("Test done.")
+#         self.l1_loss = nn.L1Loss()
+#         self.ssim_loss = SSIM(data_range=1.0, size_average=True, channel=channels, win_size=11)
+
+#         self.mse_phys = nn.MSELoss()
+#     def forward(self, pred_clean, dirty_image, clean_gt, psf):
+
+#         # ── Normalizzazione per-campione ──
+#         sample_max = clean_gt.flatten(1).max(dim=1).values.clamp(min=1e-8)
+#         sample_max = sample_max[:, None, None, None]
+
+#         pred_norm  = pred_clean  / sample_max
+#         gt_norm    = clean_gt    / sample_max
+#         dirty_norm = dirty_image / sample_max
+
+#         # ── Data loss ──
+#         l1_norm   = self.l1_loss(pred_norm, gt_norm)
+#         ssim_val  = self.ssim_loss(pred_norm.clamp(0, 1), gt_norm)
+#         ssim_norm = 1.0 - ssim_val
+#         loss_data = (self.alpha * ssim_norm) + ((1 - self.alpha) * l1_norm)
+
+#         # ── Physics loss (invariante alla normalizzazione lineare) ──
+#         psf_shifted          = torch.fft.ifftshift(psf, dim=(-2, -1))
+#         pred_fft             = torch.fft.rfft2(pred_norm)
+#         psf_fft              = torch.fft.rfft2(psf_shifted)
+#         simulated_dirty_norm = torch.fft.irfft2(pred_fft * psf_fft, s=pred_norm.shape[-2:])
+#         loss_phys            = self.mse_phys(simulated_dirty_norm, dirty_norm)
+
+#         # ── Spectral loss (spettro integrato, non derivate) ──
+#         loss_spec = self.mse_phys(
+#             pred_norm.mean(dim=(-2, -1)),
+#             gt_norm.mean(dim=(-2, -1))
+#         )
+
+#         loss_total = (self.lambda_data * loss_data +
+#                     self.lambda_phys * loss_phys +
+#                     self.lambda_spec * loss_spec)
+
+#         return loss_total, loss_data, l1_norm, ssim_norm, loss_phys, loss_spec
+
