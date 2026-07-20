@@ -147,7 +147,7 @@ The framework is highly modular and can be dynamically configured using the foll
 ###  Test Time Optimization (only for PIFNO models)
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--tt_epochs` | `int`| `10` | TTO epochs per sample. |
+| `--tto_epochs` | `int`| `10` | TTO epochs per sample. |
 | `--tto_lr` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
 ## Usage
  
@@ -156,6 +156,10 @@ The framework is highly modular and can be dynamically configured using the foll
 #### FNO2D
 ```bash
 python train_fno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --alpha 0.03
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3e6889d123f8637724bacd227fe4ff39d3484cda
 ```
 
 #### FNO3D
@@ -176,7 +180,10 @@ python train_pifno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x
 ## Final Comparison
 To evaluate all the models in respect to the traditional algorithm (CLEAN) a final script can be run:
 ```bash
-python final_comparison.py 
+python benchmark.py \
+    --fno3d checkpoints/fno3d.pth   --modes_fno3d 12 --width_fno3d 64 \
+    --pifno3d checkpoints/pifno3d.pth --modes_pifno3d 12 --width_pifno3d 64 \
+    --tto_epochs_pifno3d 10 --tto_lr_pifno3d 5e-6
 ```
 
 
@@ -229,9 +236,9 @@ python final_comparison.py
 ###  Test Time Optimization 
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--tt_epochs_pifno2d` | `int`| `10` | TTO epochs per sample. |
+| `--tto_epochs_pifno2d` | `int`| `10` | TTO epochs per sample. |
 | `--tto_lr_pifno2d` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
-| `--tt_epochs_pifno3d` | `int`| `5` | TTO epochs per sample. |
+| `--tto_epochs_pifno3d` | `int`| `5` | TTO epochs per sample. |
 | `--tto_lr_pifno3d` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
 
 ###  Output
@@ -257,6 +264,8 @@ python final_comparison.py
 ├── visualize/
 │   └── plot.py      # Monitoring functions for loss curves and spectral profiles
 ├── final_comparison.py  # Final script for evaluation and comparison between all models
+├── optuna_search_fno2d.py  # Script for hyperparameters optimization
+├── optuna_search_fno3d.py  # Script for hyperparameters optimization
 ├── train_fno2d.py       # Main script for training FNO2D
 ├── train_fno3d.py       # Main script for training FNO3D
 ├── train_pifno2d.py     # Main script for training PIFNO2D
