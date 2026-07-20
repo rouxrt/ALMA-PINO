@@ -172,13 +172,16 @@ def compute_metrics(pred, clean, device):
     if smax <= 0:
         return None
 
-    mask      = clean > (0.01 * smax)
-    true_flux = clean[mask].sum()
-    pred_flux = pred[mask].sum()
+    pred_norm  = pred  / smax
+    clean_norm = clean / smax
+
+    mask      = clean_norm > 0.01
+    true_flux = clean_norm[mask].sum()
+    pred_flux = pred_norm[mask].sum()
     flux_err  = torch.abs(pred_flux - true_flux) / (true_flux + 1e-8) * 100
 
-    p_val = psnr(pred.unsqueeze(0), clean.unsqueeze(0), data_range=smax.item())
-    s_val = ssim(pred.unsqueeze(0), clean.unsqueeze(0), data_range=smax.item())
+    p_val = psnr(pred_norm.unsqueeze(0), clean_norm.unsqueeze(0), data_range=1.0)
+    s_val = ssim(pred_norm.unsqueeze(0), clean_norm.unsqueeze(0), data_range=1.0)
 
     return {
         "flux": flux_err.item(),
@@ -189,7 +192,7 @@ def compute_metrics(pred, clean, device):
 
 def accumulate(acc, m):
     for k in acc:
-        acc[k] += m[k]
+        acc[k].append(m[k])
 
 
 
@@ -252,19 +255,28 @@ def save_metrics_chart(all_metrics, output_dir):
     width   = 0.55
 
     metric_keys   = ["flux", "psnr", "ssim", "time_ms"]
-    metric_labels = ["Flux Error (%) ↓", "PSNR (dB) ↑", "SSIM ↑", "Time per Sample (ms) ↓"]
+    metric_labels = ["Flux Error (%) ↓", "PSNR (dB) ↑", "SSIM ↑                         ", "Time per Sample (ms) ↓"]
     colors        = ["#e07b54", "#4e9ab3", "#6abf7b", "#b07cc6"]
 
-    fig, axes = plt.subplots(1, 4, figsize=(20, 5))
+    fig, axes = plt.subplots(1, 4, figsize=(22, 6))
 
     for ax, key, label, color in zip(axes, metric_keys, metric_labels, colors):
-        values = [all_metrics[m][key] for m in methods]
-        bars   = ax.bar(x, values, width, color=color, alpha=0.85)
+        means  = [all_metrics[m][key]           for m in methods]
+        stds   = [all_metrics[m][f"{key}_std"]  for m in methods]
+
+        bars = ax.bar(x, means, width, color=color, alpha=0.82,
+                      yerr=stds, capsize=4, error_kw={"elinewidth": 1.2, "ecolor": "#333333"})
+
+        for xi, (mean, std) in enumerate(zip(means, stds)):
+            ax.text(xi, mean + std + (max(means) * 0.02),
+                    f"{mean:.3f}\n±{std:.3f}",
+                    ha="center", va="bottom", fontsize=10, color="#222222")
+
         ax.set_xticks(x)
         ax.set_xticklabels(methods, rotation=30, ha="right", fontsize=8)
-        ax.set_title(label, fontsize=10)
-        ax.bar_label(bars, fmt="%.3f", fontsize=7, padding=2)
+        ax.set_title(label, fontsize=10, color='red')
         ax.grid(axis="y", alpha=0.3)
+        ax.set_ylim(bottom=0)
 
     plt.suptitle("Metrics Summary", fontsize=12)
     plt.tight_layout()
@@ -275,12 +287,22 @@ def save_metrics_chart(all_metrics, output_dir):
 
 
 def print_metrics_table(all_metrics):
-    header = f"\n{'Metodo':<20} {'Flux Error (%)':>16} {'PSNR (dB)':>12} {'SSIM':>10} {'Time (ms)':>12}"
+    col = 26  # larghezza colonna "mean ± std"
+    header = (f"\n{'Metodo':<20}"
+              f"  {'Flux Error (%)':<{col}}"
+              f"  {'PSNR (dB)':<{col}}"
+              f"  {'SSIM':<{col}}"
+              f"  {'Time (ms)':<{col}}")
     print(header)
     print("─" * len(header))
     for name, m in all_metrics.items():
-        print(f"{name:<20} {m['flux']:>16.4f} {m['psnr']:>12.4f} "
-              f"{m['ssim']:>10.4f} {m['time_ms']:>12.2f}")
+        def fmt(key):
+            return f"{m[key]:.4f} ± {m[key+'_std']:.4f}"
+        print(f"{name:<20}"
+              f"  {fmt('flux'):<{col}}"
+              f"  {fmt('psnr'):<{col}}"
+              f"  {fmt('ssim'):<{col}}"
+              f"  {fmt('time_ms'):<{col}}")
     print()
 
 
@@ -332,7 +354,7 @@ def run_benchmark(args):
             method_names.append(f"{name}+TTO")
     method_names += ["CLEAN"]
 
-    acc = {m: {"flux": 0.0, "psnr": 0.0, "ssim": 0.0, "time_ms": 0.0} for m in method_names}
+    acc = {m: {"flux": [], "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
     n_valid = {m: 0 for m in method_names}
     timer = Timer(device)
 
@@ -408,9 +430,14 @@ def run_benchmark(args):
 
     avg_metrics = {}
     for m in method_names:
-        n = n_valid[m]
+        vals = acc[m]
+        n = len(vals["flux"])
         if n > 0:
-            avg_metrics[m] = {k: v / n for k, v in acc[m].items()}
+            avg_metrics[m] = {}
+            for k, v_list in vals.items():
+                arr = np.array(v_list)
+                avg_metrics[m][k]           = arr.mean()
+                avg_metrics[m][f"{k}_std"]  = arr.std()
 
     print_metrics_table(avg_metrics)
     save_metrics_chart(avg_metrics, args.output_dir)
@@ -461,7 +488,7 @@ if __name__ == "__main__":
                         help="TTO learning rate for PI-FNO2d (Keep << lr training)")
     parser.add_argument("--tto_epochs_pifno3d", type=int,   default=10,
                         help="TTO epochs for PI-FNO3d")
-    parser.add_argument("--tto_lr_pifno3d",     type=float, default=5e-6,
+    parser.add_argument("--tto_lr_pifno3d",     type=float, default=1e-7,
                         help="TTO learning rate for PI-FNO3d (Keep << lr training)")
 
     # Output
