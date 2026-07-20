@@ -140,7 +140,6 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
     tto_criterion = CombinedLoss(
         lambda_data=0.0,
         lambda_phys=1.0,
-        lambda_spec=0.0,
         alpha=0.0,
         channels=channels
     ).to(device)

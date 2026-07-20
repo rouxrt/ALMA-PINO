@@ -440,9 +440,9 @@ if __name__ == "__main__":
     parser.add_argument("--width_pifno2d", type=int,   default=32)
 
     # PI-FNO3D
-    parser.add_argument("--modes_pifno3d", type=int,   default=12)
+    parser.add_argument("--modes_pifno3d", type=int,   default=8)
     parser.add_argument("--modes_z_pifno3d", type=int, default=8)
-    parser.add_argument("--width_pifno3d", type=int,   default=64)
+    parser.add_argument("--width_pifno3d", type=int,   default=16)
 
 
     parser.add_argument("--fourier_layers", type=int,   default=4)
@@ -459,7 +459,7 @@ if __name__ == "__main__":
                         help="TTO epochs for PI-FNO2d")
     parser.add_argument("--tto_lr_pifno2d",     type=float, default=5e-6,
                         help="TTO learning rate for PI-FNO2d (Keep << lr training)")
-    parser.add_argument("--tto_epochs_pifno3d", type=int,   default=5,
+    parser.add_argument("--tto_epochs_pifno3d", type=int,   default=10,
                         help="TTO epochs for PI-FNO3d")
     parser.add_argument("--tto_lr_pifno3d",     type=float, default=5e-6,
                         help="TTO learning rate for PI-FNO3d (Keep << lr training)")
