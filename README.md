@@ -74,12 +74,6 @@ $$ I_{\text{dirty-pred}} = \mathcal{F}^{-1}\left[\mathcal{F}(I_{\text{pred}}) \c
 
 $$ \mathcal{L}_{\text{physics}} = \text{MSE}(I_{\text{dirty-pred}}, I_{\text{dirty}}) $$
  
-### 3. Spectral Continuity Loss ($\mathcal{L}_{ \text{spectral}}$)
-A spectral-gradient consistency loss computed along the frequency axis that forces the neural operator layers to preserve the physical continuity of the cosmic gas spectral emission lines:
-
-$$ \mathcal{L}_{\text{spectral}} = \frac{1}{N} \sum_{z} | (I_{\text{pred}, z+1} - I_{\text{pred}, z}) - (I_{\text{gt}, z+1} - I_{\text{gt}, z})|^2 $$
- 
- 
 ---
  
 ## Installation & Requirements
@@ -108,22 +102,31 @@ pip install -r requirements.txt
 ---
 ##  Command-Line Interface (CLI) & Configuration
 
-The current pipeline is designed to generate and train on **synthetic interferometric mock datacubes**. This allows for a controlled environment to rigorously benchmark the physics-informed loss components against known ground truths before transitioning to real ALMA Science Archive data. 
+The current pipeline is designed to generate and train on **synthetic interferometric mock datacubes** or on **ALMA simulated datacubes**. This allows for a controlled environment to rigorously benchmark the physics-informed loss components against known ground truths before transitioning to real ALMA Science Archive data. 
 
 The framework is highly modular and can be dynamically configured using the following `argparse` flags:
 
 ###  Mock Dataset Generation
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
+| `--mock` | `flag` | `false` | If active, generate a mock dataset instead of using ALMA simulated datacubes. (If not active, next flags can be ignored) |
 | `--num_samples` | `int` | `200` | Total number of mock datacubes to generate for the dataset. |
 | `--channels` | `int` | `16` | Number of frequency slices (Z-axis) representing the spectral domain. |
 | `--img_size` | `int` | `32` | Spatial resolution (X, Y) of the datacubes. |
 | `--extended_source` | `flag` | `False` | If active, forces the generator to simulate extended galactic structures rather than point sources. |
 
+###  ALMA Dataset
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--dataset_path` | `str` | `dataset/simulations` | Path to the dataset directory |
+
 ###  FNO Architecture
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--modes` | `int` | `8` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes` (FNO2D)| `int` | `8` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_x` (FNO3D)| `int` | `8` | Number of Fourier frequencies (spatial modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_y` (FNO3D)| `int` | `8` | Number of Fourier frequencies (spatial modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_z` (FNO3D)| `int` | `6` | Number of Fourier frequencies (spectral modes) to retain. Governs the low-pass filtering capacity of the operator. |
 | `--width` | `int` | `32` | Latent dimension (channel width) of the neural operator. |
 | `--fourier_layers`| `int` | `4` | Total number of sequential Fourier layers in the network. |
 
@@ -138,32 +141,126 @@ The framework is highly modular and can be dynamically configured using the foll
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `--lambda_data` | `float`| `1.0` | Multiplier for the primary data-fidelity loss component. |
-| `--lambda_phys` | `float`| `0.5` | Multiplier for the Forward Physics Loss (MSE in Fourier space). |
-| `--lambda_spec` | `float`| `0.1` | Multiplier for the 1D Total Variation Spectral Continuity Loss. |
+| `--lambda_phys` (PIFNO) | `float`| `0.5` | Multiplier for the Forward Physics Loss (MSE in Fourier space). |
 | `--alpha` | `float`| `0.03` | Balancing factor within the data loss. Lower values (e.g., `0.03`) heavily favor MAE (L1) over MS-SSIM to preserve sparse background dynamics. |
+
+###  Test Time Optimization (only for PIFNO models)
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--tt_epochs` | `int`| `10` | TTO epochs per sample. |
+| `--tto_lr` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
 ## Usage
  
 ### Training Loop
  
+#### FNO2D
 ```bash
-python train.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --lambda_phys 10.0   --lambda_spec 10.0   --alpha 0.03
+python train_fno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --alpha 0.03
 ```
 
----
+#### FNO3D
+```bash
+python train_fno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x 16  --modes_y 16  --modes_z 8   --alpha 0.03
+```
+
+#### PIFNO2D
+```bash
+python train_pifno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --lambda_phys 10.0   --alpha 0.03
+```
+
+#### PIFNO3D
+```bash
+python train_pifno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x 16  --modes_y 16  --modes_z 8  --lambda_phys 10.0   --alpha 0.03
+```
+
+## Final Comparison
+To evaluate all the models in respect to the traditional algorithm (CLEAN) a final script can be run:
+```bash
+python final_comparison.py 
+```
+
+
+###  Model Loading
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--fno2d` | `str` | `None` | Path to the FNO2D model (.pth) [if ignored this model will be skipped during comparison]|
+| `--fno3d` | `str` | `None` | Path to the FNO3D model (.pth) [if ignored this model will be skipped during comparison] |
+| `--pifno2d` | `str` | `None` | Path to the PIFNO2D model (.pth) [if ignored this model will be skipped during comparison] |
+| `--pifno3d` | `str` | `None` | Path to the PIFNO2D model (.pth) [if ignored this model will be skipped during comparison] |
+
+###  FNO2D Architecture
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--modes_fno2d`| `int` | `8` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--width_fno2d` | `int` | `32` | Latent dimension (channel width) of the neural operator. |
+
+###  FNO3D Architecture
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--modes_fno3d`| `int` | `12` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_z_fno3d`| `int` | `4` | Number of Fourier frequencies (spectral modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--width_fno3d` | `int` | `64` | Latent dimension (channel width) of the neural operator. |
+
+###  PIFNO2D Architecture
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--modes_pifno2d`| `int` | `8` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--width_pifno2d` | `int` | `32` | Latent dimension (channel width) of the neural operator. |
+
+###  FNO3D Architecture
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--modes_pifno3d`| `int` | `12` | Number of Fourier frequencies (modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--modes_z_pifno3d`| `int` | `8` | Number of Fourier frequencies (spectral modes) to retain. Governs the low-pass filtering capacity of the operator. |
+| `--width_pifno3d` | `int` | `64` | Latent dimension (channel width) of the neural operator. |
+
+
+###  Common Architecture
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--fourier_layers`| `int` | `4` | Total number of sequential Fourier layers in the network. |
+| `--channels`| `int` | `16` | Number of spectral channels. |
+
+###  Dataset
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--dataset_path` | `str`| `dataset/simulations` | Dataser directory (the splitting will be the same as in training script) |
+
+###  Test Time Optimization 
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--tt_epochs_pifno2d` | `int`| `10` | TTO epochs per sample. |
+| `--tto_lr_pifno2d` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
+| `--tt_epochs_pifno3d` | `int`| `5` | TTO epochs per sample. |
+| `--tto_lr_pifno3d` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
+
+###  Output
+| Argument | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `--output_dir` | `str` | `results_benchmark` | Name of the output directory |
+| `--n_viz` | `int` | `5` | Number of samples for which to save comparative plots. |
  
 ## Repository Structure
  
 ```text
 ├── dataset/
+│   ├── simulations     # Folder in which ALMA datacubes are stored
+│   ├── ALMA_dataset.py
 │   └── mock_dataset.py
 ├── models/
 │   ├── basics.py
-│   ├── fno.py           # Fourier Neural Operator (2D/3D) architecture definition
-│   ├── losses.py        # Physics-Informed Loss (PILoss) implementation
+│   ├── CLEAN.py         # Traditional method for deconvolution
+│   ├── fno2d.py         # Fourier Neural Operator architecture in 2 dimension (spatial dimensions)
+│   ├── fno3d.py         # Fourier Neural Operator architecture in 3 dimension (spatial + spectral dimensions)
+│   ├── losses.py        # Physics-Informed Loss implementation
 │   └── utils.py        
 ├── visualize/
 │   └── plot.py      # Monitoring functions for loss curves and spectral profiles
-├── train.py             # Main script for training and curriculum scheduling
+├── final_comparison.py  # Final script for evaluation and comparison between all models
+├── train_fno2d.py       # Main script for training FNO2D
+├── train_fno3d.py       # Main script for training FNO3D
+├── train_pifno2d.py     # Main script for training PIFNO2D
+├── train_pifno3d.py     # Main script for training PIFNO3D
 ├── requirements.txt     # Deterministic project dependencies
 └── README.md            # Technical documentation of the framework
 ```
@@ -172,7 +269,7 @@ python train.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --la
 
  
 ## Future Work
-- [ ] Native extension of the neural operator to the third dimension (**FNO3D**) with spectral convolution kernels to simulate the 3D diffraction PSF of radio telescopes.
+- [ ] Implementation of a new neural operator model: Laplace Neural Operator and Physics Informed Laplace Neural Operator.
 - [ ] Zero-shot testing and validation on real datacubes from the ALMA *Science Archive* (Restoration of real substellar and high-redshift galactic sources).
 - [ ] Integration of kinematic constraints based on the differential calculus of higher-order astronomical moments (Moment 1 for local velocity and Moment 2 for velocity dispersion).
  
