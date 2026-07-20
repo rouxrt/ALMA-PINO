@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: IRAS_20414-1651
+Member OUID: "uid://A001/X2fe/X9b6"
+RA: 311.07577499996165 deg
+DEC: -16.671286100003876 deg
+Band: 6.0
+Bandwidth 0.03101568 GHz
+Band Central Frequency: 237.115 GHz
+Pixel size: 0.7427386580209537 arcsec
+Beam Size: 0.5669042935560917 arcsec
+Fov: 23.76763705667052 arcsec
+Angular Resolution: 0.6590940994594177 arcsec
+Velocity Resolution: 2306.4308570863086 km / s
+Redshift: 0.2608524261732277
+Integration Time: 57477.482012 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.010358409261625278
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 5
+FWHM_y (pixels): 3
+Projection Angle: 27
+Line: CS(6–5) 1020.01 - Frequency: 237.1180813296524 GHz - Flux: 2.4939767745332055 Jy  - Width (Channels): 16.0

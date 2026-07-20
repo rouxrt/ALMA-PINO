@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: Arp220
+Member OUID: "uid://A002/X6b0cc1/X80"
+RA: 233.73862916666667 deg
+DEC: 23.50291111111111 deg
+Band: 6.0
+Bandwidth 0.015624959999999999 GHz
+Band Central Frequency: 261.7 GHz
+Pixel size: 0.714055512886695 arcsec
+Beam Size: 0.36334937188591987 arcsec
+Fov: 22.84977641237424 arcsec
+Angular Resolution: 0.4439564300247954 arcsec
+Velocity Resolution: 1107.2578819411572 km / s
+Redshift: 1.1881494374563493
+Integration Time: 56846.011046 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.013454346607854283
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 9
+FWHM_y (pixels): 6
+Projection Angle: 130
+Line: NH3(10-00) 523.66 - Frequency: 261.70198222434493 GHz - Flux: 5.003290911298952 Jy  - Width (Channels): 16.0

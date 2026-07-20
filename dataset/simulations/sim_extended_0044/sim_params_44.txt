@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: LESS J033229.4-275619
+Member OUID: "uid://A002/X391d0b/X246"
+RA: 53.1220375 deg
+DEC: -27.93875 deg
+Band: 6.0
+Bandwidth 0.5 GHz
+Band Central Frequency: 237.01 GHz
+Pixel size: 0.791129641792905 arcsec
+Beam Size: 0.6962462759108009 arcsec
+Fov: 25.31614853737296 arcsec
+Angular Resolution: 0.7098094776730703 arcsec
+Velocity Resolution: 39036.747029509424 km / s
+Redshift: 0.862236350672262
+Integration Time: 56221.159149 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.010358409261625278
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 8
+FWHM_y (pixels): 5
+Projection Angle: 162
+Line: 13CO(4–3) 680.16 - Frequency: 237.00958420598784 GHz - Flux: 0.315141354782577 Jy  - Width (Channels): 4.639143631209972

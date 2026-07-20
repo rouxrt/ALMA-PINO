@@ -2,15 +2,16 @@ import argparse
 import sys
 import torch
 import torch.optim as optim
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, random_split
 import os
 import optuna
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
+from dataset.ALMA_dataset import ALMADataset
 from models.fno3d import FNO3d
-from models.losses import CombinedLoss
+from models.losses import DataLoss
 from models.utils import Logger, set_seed
-from visualize.plot import save_predictions, plot_loss_history, visualize_datacube, plot_spectral_profile
+from visualize.plot import save_predictions_FNO, plot_loss_history_FNO, visualize_datacube, plot_spectral_profile
 from torchmetrics.functional.image import peak_signal_noise_ratio as psnr
 from torchmetrics.functional.image import structural_similarity_index_measure as ssim
 
@@ -18,11 +19,8 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
 
     model.train()
     running_total_loss = 0.0
-    running_data_loss = 0.0
-    running_phys_loss = 0.0
     running_l1_loss = 0.0
     running_msssim_loss = 0.0
-    running_spec_loss = 0.0
 
     for batch_idx, (dirty, clean, psf) in enumerate(dataloader):
         dirty = dirty.to(device) 
@@ -43,7 +41,7 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
             neg_percent = (pred_clean < 0).float().mean().item() * 100
             print(f"   [Debug 3D] Min value: {min_val:.6f} | Negative pixels: {neg_percent:.1f}%")
 
-        loss_total, loss_data, l1, msssim, loss_phys, loss_spec = criterion(pred_clean, dirty, clean, psf)
+        loss_total, l1, msssim = criterion(pred_clean, dirty, clean, psf)
 
         loss_total.backward()
 
@@ -52,30 +50,24 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
         optimizer.step()
 
         running_total_loss += loss_total.item()
-        running_data_loss += loss_data.item()
-        running_phys_loss += loss_phys.item()
         running_l1_loss += l1.item()
         running_msssim_loss += msssim.item()
-        running_spec_loss += loss_spec.item()
     
     num_batches = len(dataloader)
-    return (running_total_loss / num_batches, 
-            running_data_loss / num_batches,
+    return (running_total_loss / num_batches,
             running_l1_loss / num_batches,
-            running_msssim_loss / num_batches, 
-            running_phys_loss / num_batches,
-            running_spec_loss / num_batches)
+            running_msssim_loss / num_batches)
 
 
 def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     model.eval() 
     running_total_loss = 0.0
-    running_data_loss = 0.0
-    running_phys_loss = 0.0
-    running_spec_loss = 0.0
+    running_l1_raw = 0.0
+    running_msssim = 0.0
     running_psnr = 0.0
     running_ssim = 0.0
     running_flux_error = 0.0
+    total_samples = 0
 
     with torch.no_grad(): 
         for dirty, clean, psf in dataloader:
@@ -89,45 +81,56 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             pred_clean = torch.clamp(raw_pred_3d.squeeze(1), min=0.0)
 
             if show_datacube:
-                visualize_datacube(dirty, clean, pred_clean, output_dir="results_3d/datacube_visualization")
-                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="results_3d/")
+                visualize_datacube(dirty, clean, pred_clean, output_dir="results_FNO3D/datacube_visualization", model_name="FNO3D")
+                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="results_FNO3D/", model_name="FNO3D")
                 show_datacube = False
 
-            loss_total, loss_data, l1, msssim, loss_phys, loss_spec = criterion(pred_clean, dirty, clean, psf)
+            loss_total, l1, msssim = criterion(pred_clean, dirty, clean, psf)
 
             running_total_loss += loss_total.item()
-            running_data_loss += loss_data.item()
-            running_phys_loss += loss_phys.item()
-            running_spec_loss += loss_spec.item()
+            running_l1_raw += l1.item()
+            running_msssim += msssim.item()
 
-            batch_max = clean.max().item()
-            if batch_max > 0:
-                batch_psnr = psnr(pred_clean, clean, data_range=batch_max)
-                batch_ssim = ssim(pred_clean, clean, data_range=batch_max)
-                running_psnr += batch_psnr.item()
-                running_ssim += batch_ssim.item()
+            for i in range(clean.size(0)):
+                sample_clean = clean[i]
+                sample_pred = pred_clean[i]
 
-            flux_pred = pred_clean.sum(dim=(1,2,3))
-            flux_clean = clean.sum(dim=(1,2,3))
-            flux_error = torch.abs(flux_pred - flux_clean) / (flux_clean + 1e-8)
-            running_flux_error += flux_error.mean().item() * 100
+                sample_max = sample_clean.max()
+                if sample_max > 0:
+                    p = psnr(sample_pred.unsqueeze(0), sample_clean.unsqueeze(0), data_range=sample_max)
+                    s = ssim(sample_pred.unsqueeze(0), sample_clean.unsqueeze(0), data_range=sample_max)
+                    running_psnr += p.item()
+                    running_ssim += s.item()
+
+                    mask = sample_clean > (0.01 * sample_max)  
+
+                    true_flux = sample_clean[mask].sum()
+                    pred_flux = sample_pred[mask].sum()
+
+                    if true_flux > 0:
+                        err = torch.abs(pred_flux - true_flux) / true_flux
+                        running_flux_error += err.item() * 100
+                        
+                    else:
+                        running_flux_error += 0.0
+                
+                total_samples += 1
 
     num_batches = len(dataloader)
     return (running_total_loss / num_batches, 
-            running_data_loss / num_batches, 
-            running_phys_loss / num_batches,
-            running_spec_loss / num_batches,
-            running_psnr / num_batches,
-            running_ssim / num_batches,
-            running_flux_error / num_batches)
+            running_l1_raw / num_batches,
+            running_msssim / num_batches,
+            running_psnr / total_samples if total_samples > 0 else 0.0,
+            running_ssim / total_samples if total_samples > 0 else 0.0,
+            running_flux_error / total_samples if total_samples > 0 else 0.0)
 
 def main(args):
     set_seed(42)
-    os.makedirs('results_3d', exist_ok=True)
+    os.makedirs('results_FNO3D', exist_ok=True)
     tuning_mode = hasattr(args, 'trial') and args.trial is not None
     
     if not tuning_mode:
-        sys.stdout = Logger(f"results_3d/training_log.txt")
+        sys.stdout = Logger(f"results_FNO3D/training_log.txt")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
@@ -136,34 +139,55 @@ def main(args):
         print(f"GPU Name: {name_device}")
 
     history_loss = {
-        "train": [], "val": [], "train_data": [], "train_l1": [], 
-        "train_msssim": [], "train_phys": [], "train_spec": [], 
-        "val_data": [], "val_phys": [], "val_spec": []
+        "train": [], "val": [], "train_l1": [], "train_msssim": []
     }
-    if not tuning_mode:
-        print("Loading Mock Dataset for 3D processing...")
-    train_dataset = MockGalaxyDatacubeDataset(
-        num_samples=args.num_samples, 
-        channels=args.channels, 
-        size=args.img_size,
-        extended_source=args.extended_source
-    )
-    val_dataset = MockGalaxyDatacubeDataset(
-        num_samples=args.num_samples // 5,
-        channels=args.channels,
-        size=args.img_size,
-        extended_source=args.extended_source
-    )
-    test_dataset = MockGalaxyDatacubeDataset(
-        num_samples=args.num_samples // 5,
-        channels=args.channels,
-        size=args.img_size,
-        extended_source=args.extended_source
-    )
+    if not tuning_mode and args.mock:
+        print("Loading Mock Dataset...")
+
+    if args.mock:
+        train_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples, 
+            channels=args.channels, 
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        val_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples // 5,
+            channels=args.channels,
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        test_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples // 5,
+            channels=args.channels,
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    else:
+
+        full_dataset = ALMADataset(args.dataset_path)
+        
+        total_size = len(full_dataset)
+        train_size = int(0.7 * total_size)
+        val_size = int(0.15 * total_size)
+        test_size = total_size - train_size - val_size
+        
+        train_dataset, val_dataset, test_dataset = random_split(
+            full_dataset, 
+            [train_size, val_size, test_size],
+            generator=torch.Generator().manual_seed(42) 
+        )
+
+        if not tuning_mode:
+            print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
+
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     if not tuning_mode:
         print("Initializing Spatial-Spectral Fourier Neural Operator 3D...")
@@ -180,10 +204,8 @@ def main(args):
         act=args.act
     ).to(device)
 
-    criterion = CombinedLoss(
+    criterion = DataLoss(
         lambda_data=args.lambda_data, 
-        lambda_phys=args.lambda_phys, 
-        lambda_spec=args.lambda_spec, 
         alpha=args.alpha, 
         channels=args.channels
     ).to(device)
@@ -196,6 +218,7 @@ def main(args):
     )
 
     best_val_loss = float('inf')
+    best_val_l1_raw = float('inf')
     best_val_flux_error = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'fno3d.pth')
@@ -204,40 +227,29 @@ def main(args):
         print("Starting 3D training loop...\n")
     for epoch in range(1, args.epochs + 1):
 
-        tot_loss, data_loss, l1, msssim, phys_loss, loss_spec = train_one_epoch(
+        tot_loss, l1, msssim = train_one_epoch(
             model, train_dataloader, criterion, optimizer, device, epoch, tuning_mode=tuning_mode
         )
-        val_tot, val_data, val_phys, val_spec, _, _, val_flux = evaluate_model(
+        val_tot, val_l1_raw, val_msssim, _, _, val_flux = evaluate_model(
             model, val_dataloader, criterion, device
         )
 
-        #oputna pruner
-        if tuning_mode:
-            args.trial.report(val_tot, epoch)
-            if args.trial.should_prune():
-                print(f"Trial pruned by Optuna at epoch {epoch}")
-                raise optuna.exceptions.TrialPruned()
 
         scheduler.step()
         
         if not tuning_mode:
             print(f"Epoch [{epoch}/{args.epochs}] | "
-                  f"Train Loss: {tot_loss:.5f} (Data: {data_loss:.5f} | Phys: {phys_loss:.5f} | Spec: {loss_spec:.5f}) |  "
-                  f"Val Loss: {val_tot:.5f} (Data: {val_data:.5f} | Phys: {val_phys:.5f} | Spec: {val_spec:.5f})")
+                  f"Train Loss: {tot_loss:.5f} (L1: {l1:.5f} | SSIM: {msssim:.5f}) |  "
+                  f"Val Loss: {val_tot:.5f} (L1: {val_l1_raw:.5f} | SSIM: {val_msssim:.5f})")
         
         history_loss["train"].append(tot_loss)
         history_loss["val"].append(val_tot)
-        history_loss["train_data"].append(args.lambda_data * data_loss)
         history_loss["train_l1"].append(args.lambda_data * (1 - args.alpha) * l1)
         history_loss["train_msssim"].append(args.lambda_data * args.alpha * msssim)
-        history_loss["train_phys"].append(args.lambda_phys * phys_loss)
-        history_loss["train_spec"].append(args.lambda_spec * loss_spec)
-        history_loss["val_data"].append(args.lambda_data * val_data)
-        history_loss["val_phys"].append(args.lambda_phys * val_phys)
-        history_loss["val_spec"].append(args.lambda_spec * val_spec)
 
         if val_tot < best_val_loss:
             best_val_loss = val_tot
+            best_val_l1_raw = val_l1_raw
             best_val_flux_error = val_flux
             torch.save(model.state_dict(), best_model_path)
             if not tuning_mode:
@@ -251,11 +263,11 @@ def main(args):
                 sample_pred_3d = model(sample_dirty_3d)
                 sample_pred = sample_pred_3d.squeeze(1)
             
-            save_predictions(sample_dirty, sample_clean, sample_pred.cpu(), 
-                             epoch, tot_loss, data_loss, phys_loss, output_dir="results_3d/predictions")
+            save_predictions_FNO(sample_dirty, sample_clean, sample_pred.cpu(), 
+                             epoch, tot_loss, l1, msssim, output_dir="results_FNO3D/predictions", dim="3D")
 
     if not tuning_mode:        
-        plot_loss_history(history_loss, title="PI-FNO3d Training Loss", save_path="results_3d/loss_history.png")
+        plot_loss_history_FNO(history_loss, title="FNO3d Training Loss", save_path="results_FNO3D/loss_history.png")
 
         print("\n3D Training Completed!")
         print("\n" + "="*50)
@@ -263,20 +275,22 @@ def main(args):
     
 
         model.load_state_dict(torch.load(best_model_path, map_location=device, weights_only=True))
-        test_tot, test_data, test_phys, test_spec, test_psnr, test_ssim, test_flux_error = evaluate_model(
+        test_tot, test_l1, test_msssim, test_psnr, test_ssim, test_flux_error = evaluate_model(
             model, test_dataloader, criterion, device, show_datacube=not tuning_mode
         )
 
-        print(f"Test Loss: {test_tot:.5f} (Data: {test_data:.5f} | Phys: {test_phys:.5f} | Spec: {test_spec:.5f})")
+        print(f"Test Loss: {test_tot:.5f} (L1: {test_l1:.5f} | SSIM: {test_msssim:.5f})")
         print(f"Test PSNR: {test_psnr:.5f} dB")
         print(f"Test SSIM: {test_ssim:.5f}")
         print(f"Test Flux Error: {test_flux_error:.5f}%")
 
-    return best_val_loss, best_val_flux_error
+    return best_val_l1_raw, best_val_flux_error
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Training PI-FNO3d for ALMA Datacubes")
+    parser = argparse.ArgumentParser(description="Training FNO3d for ALMA Datacubes")
     
+    parser.add_argument('--dataset_path', type=str, default='dataset/simulations', help='Path to the dataset directory')
+    parser.add_argument('--mock', action='store_true', help='Use mock dataset instead of ALMA dataset')
     parser.add_argument('--num_samples', type=int, default=200, help='Number of samples')
     parser.add_argument('--channels', type=int, default=16, help='Z dimension (frequency slices)')
     parser.add_argument('--img_size', type=int, default=32, help='Spatial dimension XY')
@@ -288,15 +302,13 @@ if __name__ == '__main__':
     
     parser.add_argument('--width', type=int, default=16, help='Latent dimension (width)')
     parser.add_argument('--fourier_layers', type=int, default=4, help='Number of Spectral Convolution Layers')
-    parser.add_argument('--pad_ratio', type=float, default=0.0, help='Padding ratio for 3D boundary protection')
+    parser.add_argument('--pad_ratio', type=float, default=0.1, help='Padding ratio for 3D boundary protection')
     
     parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
     parser.add_argument('--learning_rate', type=float, default=0.005, help='Learning rate')
     
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')
-    parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
-    parser.add_argument('--lambda_spec', type=float, default=0.0, help='Weight of the Spectral Loss')
     parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor between L1 and MS-SSIM')
     parser.add_argument('--act', type=str, default='gelu', choices=['gelu', 'relu', 'tanh', 'leaky_relu'], help='Activation function')
 

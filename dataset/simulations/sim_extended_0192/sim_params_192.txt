@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: himiko
+Member OUID: "uid://A002/X391d0b/Xc2"
+RA: 34.489846 deg
+DEC: -5.145681 deg
+Band: 6.0
+Bandwidth 0.015624959999999999 GHz
+Band Central Frequency: 252.095 GHz
+Pixel size: 0.7025987161834425 arcsec
+Beam Size: 0.5507745220841609 arcsec
+Fov: 22.48315891787016 arcsec
+Angular Resolution: 0.5198286532971247 arcsec
+Velocity Resolution: 1089.5031734637655 km / s
+Redshift: 1.8701518424411852
+Integration Time: 56139.346369 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.012118734166682006
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 5
+FWHM_y (pixels): 8
+Projection Angle: 9
+Line: H2O+ 721 - Frequency: 252.09620680845353 GHz - Flux: 2.8387828239108326 Jy  - Width (Channels): 16.0

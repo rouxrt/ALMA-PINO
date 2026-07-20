@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: SDF-LBG-ID34
+Member OUID: "uid://A001/X12d/Xf1"
+RA: 200.94065416666663 deg
+DEC: 27.547583333333336 deg
+Band: 6.0
+Bandwidth 0.12499215999999999 GHz
+Band Central Frequency: 261.645 GHz
+Pixel size: 0.7183934322004013 arcsec
+Beam Size: 0.3634257510082181 arcsec
+Fov: 22.98858983041284 arcsec
+Angular Resolution: 0.4764346954968681 arcsec
+Velocity Resolution: 8919.514512804555 km / s
+Redshift: 0.8951846461313661
+Integration Time: 56815.063493 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.013454346607854283
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 3
+FWHM_y (pixels): 7
+Projection Angle: 68
+Line: H2O(5-4) 631.56 - Frequency: 261.6460094458433 GHz - Flux: 0.34558100099882716 Jy  - Width (Channels): 7.133405699605245

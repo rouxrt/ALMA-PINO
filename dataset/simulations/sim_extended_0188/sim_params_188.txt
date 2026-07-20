@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: TN_J0924
+Member OUID: "uid://A001/X145/X101"
+RA: 141.08325 deg
+DEC: -22.02777777777778 deg
+Band: 6.0
+Bandwidth 0.12499215999999999 GHz
+Band Central Frequency: 222.54000000000002 GHz
+Pixel size: 0.7942561773464251 arcsec
+Beam Size: 0.7972319018998874 arcsec
+Fov: 25.416197675085602 arcsec
+Angular Resolution: 1.0620458858616522 arcsec
+Velocity Resolution: 9820.668286790667 km / s
+Redshift: 0.9189068962701956
+Integration Time: 57040.329096 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.00894372866799832
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 6
+FWHM_y (pixels): 9
+Projection Angle: 151
+Line: CCH(5–4) 686.56 - Frequency: 222.54138303896735 GHz - Flux: 0.1282346898570445 Jy  - Width (Channels): 16.0

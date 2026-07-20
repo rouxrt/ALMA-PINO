@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: BDF-3299
+Member OUID: "uid://A002/X7f285c/X19"
+RA: 337.05135 deg
+DEC: -35.166422222222224 deg
+Band: 6.0
+Bandwidth 0.03101568 GHz
+Band Central Frequency: 236.3 GHz
+Pixel size: 0.8001194420150775 arcsec
+Beam Size: 0.468765982573753 arcsec
+Fov: 25.60382214448248 arcsec
+Angular Resolution: 0.5342661312904249 arcsec
+Velocity Resolution: 1243.5061006603687 km / s
+Redshift: 1.7169249822408892
+Integration Time: 56774.521839 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.010358409261625278
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 3
+FWHM_y (pixels): 9
+Projection Angle: 62
+Line: CS(13–12) 470.98 - Frequency: 236.300017050794 GHz - Flux: 14.37131005469686 Jy  - Width (Channels): 16.0

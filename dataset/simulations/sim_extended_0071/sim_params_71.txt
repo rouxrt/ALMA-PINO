@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: SXDS1_35572
+Member OUID: "uid://A001/Xb6/X2d"
+RA: 34.39438333333333 deg
+DEC: -5.044158888888889 deg
+Band: 6.0
+Bandwidth 0.015624959999999999 GHz
+Band Central Frequency: 245.185 GHz
+Pixel size: 0.7704361688681363 arcsec
+Beam Size: 0.6269240284244174 arcsec
+Fov: 24.65395740378036 arcsec
+Angular Resolution: 0.6466079977122791 arcsec
+Velocity Resolution: 1189.4423346978865 km / s
+Redshift: 1.1321279857085946
+Integration Time: 56150.387244 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.011271071801166562
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 7
+FWHM_y (pixels): 6
+Projection Angle: 22
+Line: CCH(6–5) 572.16 - Frequency: 245.1867318244449 GHz - Flux: 6.983869804491518 Jy  - Width (Channels): 16.0

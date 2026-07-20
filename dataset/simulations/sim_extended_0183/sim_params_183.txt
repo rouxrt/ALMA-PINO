@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: NTT474
+Member OUID: "uid://A002/X9a055b/X11"
+RA: 181.373976 deg
+DEC: 7.664256000000001 deg
+Band: 6.0
+Bandwidth 0.5 GHz
+Band Central Frequency: 246.755 GHz
+Pixel size: 0.75464722780434 arcsec
+Beam Size: 0.7189965246856233 arcsec
+Fov: 24.14871128973888 arcsec
+Angular Resolution: 0.958655305061093 arcsec
+Velocity Resolution: 9358.807041434917 km / s
+Redshift: 0.6039825453088099
+Integration Time: 57135.15309 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.011433988487095438
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 6
+FWHM_y (pixels): 3
+Projection Angle: 42
+Line: CS(8–7) 765.08 - Frequency: 246.75327625234604 GHz - Flux: 0.11275758679992993 Jy  - Width (Channels): 5.9429993735772335

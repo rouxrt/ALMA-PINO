@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: SDF1100.001
+Member OUID: "uid://A002/X5a9a13/X679"
+RA: 201.1837833333333 deg
+DEC: 27.398794444444444 deg
+Band: 6.0
+Bandwidth 0.5 GHz
+Band Central Frequency: 271.995 GHz
+Pixel size: 0.7766018429708137 arcsec
+Beam Size: 0.1577195430575801 arcsec
+Fov: 24.851258975066038 arcsec
+Angular Resolution: 0.2808676158623062 arcsec
+Velocity Resolution: 34068.29262194948 km / s
+Redshift: 1.1074368469203093
+Integration Time: 56885.854171 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.014985603459159764
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 7
+FWHM_y (pixels): 4
+Projection Angle: 134
+Line: NH3(10-00) 523.66 - Frequency: 271.995087618597 GHz - Flux: 0.499086346640066 Jy  - Width (Channels): 3.9113092519988912

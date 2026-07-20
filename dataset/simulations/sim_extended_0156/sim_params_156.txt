@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: BR1202-0725
+Member OUID: "uid://A001/X122/X3c1"
+RA: 181.34608333333333 deg
+DEC: -7.708638888888889 deg
+Band: 6.0
+Bandwidth 0.0624688 GHz
+Band Central Frequency: 255.91500000000002 GHz
+Pixel size: 0.7301031014430562 arcsec
+Beam Size: 0.6932613854162553 arcsec
+Fov: 23.3632992461778 arcsec
+Angular Resolution: 0.8665906835517552 arcsec
+Velocity Resolution: 4526.947680716966 km / s
+Redshift: 0.12227786758092674
+Integration Time: 57026.360819 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.01266879667599371
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 8
+FWHM_y (pixels): 7
+Projection Angle: 47
+Line: CH3OH(6-5) 1033.25 - Frequency: 255.9110706251868 GHz - Flux: 5.183305535582695 Jy  - Width (Channels): 16.0

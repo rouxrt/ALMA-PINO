@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: ESO320-G030
+Member OUID: "uid://A001/X121/X487"
+RA: 178.298842 deg
+DEC: -39.1302 deg
+Band: 6.0
+Bandwidth 0.015624959999999999 GHz
+Band Central Frequency: 228.2 GHz
+Pixel size: 0.7687007875099238 arcsec
+Beam Size: 0.7774583148501357 arcsec
+Fov: 24.59842520031756 arcsec
+Angular Resolution: 0.9125208663601164 arcsec
+Velocity Resolution: 1202.821863351444 km / s
+Redshift: 1.5455084260193315
+Integration Time: 56999.41054 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.00942250171288164
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 7
+FWHM_y (pixels): 9
+Projection Angle: 137
+Line: CO(5-4) 520.2 - Frequency: 228.19901971160635 GHz - Flux: 118.88691844719312 Jy  - Width (Channels): 16.0

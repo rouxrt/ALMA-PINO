@@ -3,7 +3,7 @@ import os
 import sys
 import torch
 
-def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, output_dir="results"):
+def save_predictions_FNO(dirty, clean, pred, epoch, tot_loss, l1_loss, msssim_loss, output_dir="results",dim="2D"):
     os.makedirs(output_dir, exist_ok=True)
     
     c = dirty.shape[1] // 2 
@@ -14,7 +14,7 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
-    fig.suptitle(f'Epoca {epoch} | Loss Tot: {tot_loss:.5f} | Data (MSE): {data_loss:.5f} | Phys: {phys_loss:.5f}', 
+    fig.suptitle(f'Epoch {epoch} | Loss Tot: {tot_loss:.5f} | L1: {l1_loss:.5f} | SSIM: {msssim_loss:.5f}', 
                  fontsize=14, fontweight='bold')
     
     global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
@@ -27,7 +27,7 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
     
 
     im1 = axes[1].imshow(img_pred, cmap='magma', vmin=global_vmin, vmax=global_vmax)
-    axes[1].set_title('PI-FNO Prediction')
+    axes[1].set_title(f'FNO{dim} Prediction')
     axes[1].axis('off')
     
     im2 = axes[2].imshow(img_clean, cmap='magma', vmin=global_vmin, vmax=global_vmax)
@@ -39,7 +39,43 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
     plt.savefig(os.path.join(output_dir, f'epoch_{epoch:03d}_prediction.png'), dpi=150)
     plt.close() 
 
-def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
+def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, output_dir="results", dim="2D"):
+    os.makedirs(output_dir, exist_ok=True)
+    
+    c = dirty.shape[1] // 2 
+    
+    img_dirty = dirty[0, c].detach().cpu().numpy()
+    img_clean = clean[0, c].detach().cpu().numpy()
+    img_pred = pred[0, c].detach().cpu().numpy()
+
+    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    
+    fig.suptitle(f'Epoch {epoch} | Loss Tot: {tot_loss:.5f} | Data (MSE): {data_loss:.5f} | Phys: {phys_loss:.5f}', 
+                 fontsize=14, fontweight='bold')
+    
+    global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
+    global_vmax = max(dirty[0].max(), clean[0].max(), pred[0].max()).item()
+    
+    im0 = axes[0].imshow(img_dirty, cmap='magma', vmin=global_vmin, vmax=global_vmax)
+    axes[0].set_title('Dirty Image (Input)')
+    axes[0].axis('off')
+    
+    
+
+    im1 = axes[1].imshow(img_pred, cmap='magma', vmin=global_vmin, vmax=global_vmax)
+    axes[1].set_title(f'PI-FNO{dim} Prediction')
+    axes[1].axis('off')
+    
+    im2 = axes[2].imshow(img_clean, cmap='magma', vmin=global_vmin, vmax=global_vmax)
+    axes[2].set_title('Ground Truth (Clean)')
+    axes[2].axis('off')
+    
+    fig.colorbar(im2, ax=axes.ravel().tolist(), fraction=0.02, pad=0.04)
+
+    plt.savefig(os.path.join(output_dir, f'epoch_{epoch:03d}_prediction.png'), dpi=150)
+    plt.close() 
+
+def visualize_datacube(dirty, clean, pred, output_dir = "datacube", model_name="FNO3d"):
     os.makedirs(output_dir, exist_ok=True)
 
     global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
@@ -58,7 +94,7 @@ def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
         axes[0].axis('off')
         
         im1 = axes[1].imshow(img_pred, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
-        axes[1].set_title(f'PI-FNO Prediction - Channel {c}')
+        axes[1].set_title(f'{model_name} Prediction - Channel {c}')
         axes[1].axis('off')
         
         im2 = axes[2].imshow(img_clean, cmap='magma', origin='lower', vmin=global_vmin, vmax=global_vmax)
@@ -72,7 +108,7 @@ def visualize_datacube(dirty, clean, pred, output_dir = "datacube"):
 
 
 
-def plot_spectral_profile(clean, pred, sample_idx=0, output_dir="results"):
+def plot_spectral_profile(clean, pred, sample_idx=0, output_dir="results", model_name="FNO3d"):
     if clean.dim() == 3:
         clean = clean.unsqueeze(0)
         pred = pred.unsqueeze(0)
@@ -96,10 +132,10 @@ def plot_spectral_profile(clean, pred, sample_idx=0, output_dir="results"):
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
 
-    fig.suptitle("Spectral Diagnosis (Z-axis) - Ground Truth vs FNO3d Prediction", fontsize=15)
+    fig.suptitle(f"Spectral Diagnosis (Z-axis) - Ground Truth vs {model_name} Prediction", fontsize=15)
 
     axes[0].plot(channels, flux_clean, label='Ground Truth', color='black', linestyle='--', marker='o')
-    axes[0].plot(channels, flux_pred, label='FNO3d Prediction', color='red', alpha=0.7, marker='x')
+    axes[0].plot(channels, flux_pred, label=f'{model_name} Prediction', color='red', alpha=0.7, marker='x')
     axes[0].set_title("Integrated Spatial Flux per Channel")
     axes[0].set_xlabel("Channel Index (Z)")
     axes[0].set_ylabel("Total Flux")
@@ -118,6 +154,39 @@ def plot_spectral_profile(clean, pred, sample_idx=0, output_dir="results"):
     plt.savefig(os.path.join(output_dir, f'spectral_profile_{sample_idx:02d}.png'), dpi=150)
     plt.close()
 
+def plot_loss_history_FNO(history: dict, title: str, save_path: str):
+
+    if not history:
+        return
+        
+    epochs = range(len(history["train"]))
+    
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5))
+    
+    ax1.plot(epochs, history["train"], color='blue', label='Train')
+    ax1.plot(epochs, history["val"], color='orange', label='Validation')
+    ax1.set_title(f"Loss vs Epochs - {title}")
+    ax1.set_xlabel("Epoch")
+    ax1.set_ylabel("Loss Value")
+    ax1.set_yscale('log')
+    ax1.grid(True, linestyle='--', alpha=0.7)
+    ax1.legend()
+    
+    
+    ax2.plot(epochs, history["train"], color='blue', label='Total Loss')    
+    ax2.plot(epochs, history["train_l1"], color='purple', label='L1 Loss')
+    ax2.plot(epochs, history["train_msssim"], color='orange', label='MS-SSIM Loss')
+    ax2.set_title(f"Loss Components vs Epochs - {title}")
+    ax2.set_xlabel("Epoch")
+    ax2.set_ylabel("Loss Value")
+    ax2.set_yscale('log')
+    ax2.grid(True, linestyle='--', alpha=0.7)
+    ax2.legend()
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=150)
+    plt.close()
+
 def plot_loss_history(history: dict, title: str, save_path: str):
 
     if not history:
@@ -129,9 +198,9 @@ def plot_loss_history(history: dict, title: str, save_path: str):
     
     ax1.plot(epochs, history["train"], color='blue', label='Train')
     ax1.plot(epochs, history["val"], color='orange', label='Validation')
-    ax1.set_title(f"MSE vs Epochs - {title}")
+    ax1.set_title(f"Loss vs Epochs - {title}")
     ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("MSE")
+    ax1.set_ylabel("Loss Value")
     ax1.set_yscale('log')
     ax1.grid(True, linestyle='--', alpha=0.7)
     ax1.legend()

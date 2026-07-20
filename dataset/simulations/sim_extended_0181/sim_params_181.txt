@@ -1,0 +1,22 @@
+Simulation Parameters:
+Source Name: ID112
+Member OUID: "uid://A002/X5ce05d/X45"
+RA: 150.02214166666667 deg
+DEC: 2.026533888888889 deg
+Band: 6.0
+Bandwidth 0.5 GHz
+Band Central Frequency: 246.125 GHz
+Pixel size: 0.7132530924221288 arcsec
+Beam Size: 1.0748464464646112 arcsec
+Fov: 22.82409895750812 arcsec
+Angular Resolution: 1.0106414719868813 arcsec
+Velocity Resolution: 35336.550668579584 km / s
+Redshift: 0.5848267807643124
+Integration Time: 56668.308151 s
+Cube Size: 32 x 32 x 16 pixels
+Mean Continum Flux: 0.011433988487095438
+Infrared Luminosity: 1000000000000.0
+FWHM_x (pixels): 8
+FWHM_y (pixels): 4
+Projection Angle: 73
+Line: CS(8–7) 765.08 - Frequency: 246.1251101199702 GHz - Flux: 0.013479810590841971 Jy  - Width (Channels): 5.896253768583342

@@ -23,7 +23,7 @@ class MockGalaxyDatacubeDataset(Dataset):
         # moving center of PSF to origin (0,0) before FFT to avoid circular shift issues   
         psf_shifted = torch.fft.ifftshift(self.psf, dim=(-2, -1))
         
-        self.psf_fft = torch.fft.rfft2(psf_shifted) # Ora è perfetta!
+        self.psf_fft = torch.fft.rfft2(psf_shifted) 
 
     def _create_gaussian_2d(self, size, sigma_x, sigma_y=None, center_x=None, center_y=None):
         if center_x is None: center_x = size // 2
@@ -98,32 +98,38 @@ if __name__ == "__main__":
     loader = DataLoader(dataset, batch_size=4)
     
     dirty, clean, psf = next(iter(loader))
-    print(f"Shape Immagine Sporca (Input Rete): {dirty.shape}")
-    print(f"Shape Immagine Pulita (Loss Data): {clean.shape}")
-    print(f"Shape PSF (Loss Fisica): {psf.shape}")
-    print("\nDataset Astrofisico Sintetico Multi-Canale PRONTO!")
+    #in english
+    print(f"Shape Dirty Image: {dirty.shape}")
+    print(f"Shape Clean Image: {clean.shape}")
+    print(f"Shape PSF: {psf.shape}")
 
-    print("Generazione dei grafici in corso...")
+    print("Generating plots...")
     
     sample_idx = 0
     dirty_img = dirty[sample_idx].detach().cpu().numpy()
     clean_img = clean[sample_idx].detach().cpu().numpy()
+    psf_img = psf[sample_idx].detach().cpu().numpy()
     
     channels_to_plot = [0, 8, 15] 
     
-    fig, axes = plt.subplots(nrows=2, ncols=3, figsize=(14, 8))
-    fig.suptitle("Simulazione Telescopio: Ground Truth vs Osservazione", fontsize=16)
+    fig, axes = plt.subplots(nrows=3, ncols=3, figsize=(14, 8))
+    fig.suptitle("Ground Truth vs Observation", fontsize=16)
 
     for i, ch in enumerate(channels_to_plot):
         ax_clean = axes[0, i]
         im_clean = ax_clean.imshow(clean_img[ch], cmap='magma', origin='lower')
-        ax_clean.set_title(f"Clean - Canale {ch}")
+        ax_clean.set_title(f"Clean - Channel {ch}")
         fig.colorbar(im_clean, ax=ax_clean, fraction=0.046, pad=0.04)
         
         ax_dirty = axes[1, i]
         im_dirty = ax_dirty.imshow(dirty_img[ch], cmap='magma', origin='lower')
-        ax_dirty.set_title(f"Dirty - Canale {ch}")
+        ax_dirty.set_title(f"Dirty - Channel {ch}")
         fig.colorbar(im_dirty, ax=ax_dirty, fraction=0.046, pad=0.04)
+
+        ax_psf = axes[2, i]
+        im_psf = ax_psf.imshow(psf_img[ch], cmap='magma', origin='lower')
+        ax_psf.set_title(f"PSF - Channel {ch}")  
+        fig.colorbar(im_psf, ax=ax_psf, fraction=0.046, pad=0.04)
 
     plt.tight_layout()
     plt.show()
