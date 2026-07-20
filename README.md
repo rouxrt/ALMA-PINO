@@ -147,7 +147,7 @@ The framework is highly modular and can be dynamically configured using the foll
 ###  Test Time Optimization (only for PIFNO models)
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--tt_epochs` | `int`| `10` | TTO epochs per sample. |
+| `--tto_epochs` | `int`| `10` | TTO epochs per sample. |
 | `--tto_lr` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
 ## Usage
  
@@ -177,7 +177,10 @@ python train_pifno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x
 ## Final Comparison
 To evaluate all the models in respect to the traditional algorithm (CLEAN) a final script can be run:
 ```bash
-python final_comparison.py 
+python benchmark.py \
+    --fno3d checkpoints/fno3d.pth   --modes_fno3d 12 --width_fno3d 64 \
+    --pifno3d checkpoints/pifno3d.pth --modes_pifno3d 12 --width_pifno3d 64 \
+    --tto_epochs_pifno3d 10 --tto_lr_pifno3d 5e-6
 ```
 
 
@@ -230,9 +233,9 @@ python final_comparison.py
 ###  Test Time Optimization 
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `--tt_epochs_pifno2d` | `int`| `10` | TTO epochs per sample. |
+| `--tto_epochs_pifno2d` | `int`| `10` | TTO epochs per sample. |
 | `--tto_lr_pifno2d` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
-| `--tt_epochs_pifno3d` | `int`| `5` | TTO epochs per sample. |
+| `--tto_epochs_pifno3d` | `int`| `5` | TTO epochs per sample. |
 | `--tto_lr_pifno3d` | `float`| `5e-6` | Learning rate for TTO (It has to be smaller than training learning rate). |
 
 ###  Output
