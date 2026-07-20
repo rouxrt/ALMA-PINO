@@ -141,12 +141,7 @@ The framework is highly modular and can be dynamically configured using the foll
 | Argument | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `--lambda_data` | `float`| `1.0` | Multiplier for the primary data-fidelity loss component. |
-<<<<<<< HEAD
-| `--lambda_phys` | `float`| `0.5` | Multiplier for the Forward Physics Loss (MSE in Fourier space). |
-| `--lambda_spec` | `float`| `0.0` | Multiplier for the  Spectral Continuity Loss. |
-=======
 | `--lambda_phys` (PIFNO) | `float`| `0.5` | Multiplier for the Forward Physics Loss (MSE in Fourier space). |
->>>>>>> almasim
 | `--alpha` | `float`| `0.03` | Balancing factor within the data loss. Lower values (e.g., `0.03`) heavily favor MAE (L1) over MS-SSIM to preserve sparse background dynamics. |
 
 ###  Test Time Optimization (only for PIFNO models)
@@ -157,26 +152,15 @@ The framework is highly modular and can be dynamically configured using the foll
 ## Usage
  
 ### Training Loop
-<<<<<<< HEAD
-
-#### FNO2D
-```bash
-python train_fno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --lambda_phys 10.0   --lambda_spec 10.0   --alpha 0.03
-=======
  
 #### FNO2D
 ```bash
 python train_fno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --alpha 0.03
->>>>>>> almasim
+
 ```
 
 #### FNO3D
 ```bash
-<<<<<<< HEAD
-python train_fno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x 16  --modes_y 16  --modes_z 8  --lambda_phys 10.0   --lambda_spec 10.0   --alpha 0.03
-```
----
-=======
 python train_fno3d.py   --epochs 300   --batch_size 4   --width 32   --modes_x 16  --modes_y 16  --modes_z 8   --alpha 0.03
 ```
 
@@ -256,7 +240,6 @@ python final_comparison.py
 | :--- | :--- | :--- | :--- |
 | `--output_dir` | `str` | `results_benchmark` | Name of the output directory |
 | `--n_viz` | `int` | `5` | Number of samples for which to save comparative plots. |
->>>>>>> almasim
  
 ## Repository Structure
  
@@ -267,26 +250,18 @@ python final_comparison.py
 │   └── mock_dataset.py
 ├── models/
 │   ├── basics.py
-<<<<<<< HEAD
-=======
 │   ├── CLEAN.py         # Traditional method for deconvolution
->>>>>>> almasim
 │   ├── fno2d.py         # Fourier Neural Operator architecture in 2 dimension (spatial dimensions)
 │   ├── fno3d.py         # Fourier Neural Operator architecture in 3 dimension (spatial + spectral dimensions)
 │   ├── losses.py        # Physics-Informed Loss implementation
 │   └── utils.py        
 ├── visualize/
 │   └── plot.py      # Monitoring functions for loss curves and spectral profiles
-<<<<<<< HEAD
-├── train_fno2d.py       # Main script for training FNO2D
-├── train_fno3d.py       # Main script for training FNO3D
-=======
 ├── final_comparison.py  # Final script for evaluation and comparison between all models
 ├── train_fno2d.py       # Main script for training FNO2D
 ├── train_fno3d.py       # Main script for training FNO3D
 ├── train_pifno2d.py     # Main script for training PIFNO2D
 ├── train_pifno3d.py     # Main script for training PIFNO3D
->>>>>>> almasim
 ├── requirements.txt     # Deterministic project dependencies
 └── README.md            # Technical documentation of the framework
 ```
@@ -295,11 +270,7 @@ python final_comparison.py
 
  
 ## Future Work
-<<<<<<< HEAD
-- [ ] Including Test Time Optimization (TTO) for physics informed models.
-=======
 - [ ] Implementation of a new neural operator model: Laplace Neural Operator and Physics Informed Laplace Neural Operator.
->>>>>>> almasim
 - [ ] Zero-shot testing and validation on real datacubes from the ALMA *Science Archive* (Restoration of real substellar and high-redshift galactic sources).
 - [ ] Integration of kinematic constraints based on the differential calculus of higher-order astronomical moments (Moment 1 for local velocity and Moment 2 for velocity dispersion).
  
