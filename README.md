@@ -261,6 +261,8 @@ python benchmark.py \
 ├── visualize/
 │   └── plot.py      # Monitoring functions for loss curves and spectral profiles
 ├── final_comparison.py  # Final script for evaluation and comparison between all models
+├── optuna_search_fno2d.py  # Script for hyperparameters optimization
+├── optuna_search_fno3d.py  # Script for hyperparameters optimization
 ├── train_fno2d.py       # Main script for training FNO2D
 ├── train_fno3d.py       # Main script for training FNO3D
 ├── train_pifno2d.py     # Main script for training PIFNO2D
