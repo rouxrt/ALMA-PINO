@@ -91,19 +91,6 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             running_l1_raw += l1.item()
             running_msssim += msssim.item()
 
-            # batch_max = clean.max().item()
-            # if batch_max > 0:
-            #     batch_psnr = psnr(pred_clean, clean, data_range=batch_max)
-            #     batch_ssim = ssim(pred_clean, clean, data_range=batch_max)
-            #     running_psnr += batch_psnr.item()
-            #     running_ssim += batch_ssim.item()
-
-            # flux_pred = pred_clean.sum(dim=(1,2,3))
-            # flux_clean = clean.sum(dim=(1,2,3))
-            # flux_error = torch.abs(flux_pred - flux_clean) / (flux_clean + 1e-8)
-            # running_flux_error += flux_error.mean().item() * 100
-            
-            #masked flux error calculation
             for i in range(clean.size(0)):
                 sample_clean = clean[i]
                 sample_pred = pred_clean[i]
@@ -115,7 +102,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
                     running_psnr += p.item()
                     running_ssim += s.item()
 
-                    mask = sample_clean > 1e-6
+                    mask = sample_clean > (0.01 * sample_max)  
 
                     true_flux = sample_clean[mask].sum()
                     pred_flux = sample_pred[mask].sum()
@@ -154,50 +141,53 @@ def main(args):
     history_loss = {
         "train": [], "val": [], "train_l1": [], "train_msssim": []
     }
-    # if not tuning_mode:
-    #     print("Loading Mock Dataset for 3D processing...")
-    # train_dataset = MockGalaxyDatacubeDataset(
-    #     num_samples=args.num_samples, 
-    #     channels=args.channels, 
-    #     size=args.img_size,
-    #     extended_source=args.extended_source
-    # )
-    # val_dataset = MockGalaxyDatacubeDataset(
-    #     num_samples=args.num_samples // 5,
-    #     channels=args.channels,
-    #     size=args.img_size,
-    #     extended_source=args.extended_source
-    # )
-    # test_dataset = MockGalaxyDatacubeDataset(
-    #     num_samples=args.num_samples // 5,
-    #     channels=args.channels,
-    #     size=args.img_size,
-    #     extended_source=args.extended_source
-    # )
-    
-    # train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    # val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    # test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    if not tuning_mode and args.mock:
+        print("Loading Mock Dataset...")
 
-    full_dataset = ALMADataset(args.dataset_path)
+    if args.mock:
+        train_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples, 
+            channels=args.channels, 
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        val_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples // 5,
+            channels=args.channels,
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        test_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples // 5,
+            channels=args.channels,
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
     
-    total_size = len(full_dataset)
-    train_size = int(0.7 * total_size)
-    val_size = int(0.15 * total_size)
-    test_size = total_size - train_size - val_size
-    
-    train_dataset, val_dataset, test_dataset = random_split(
-        full_dataset, 
-        [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(42) 
-    )
+    else:
 
-    if not tuning_mode:
-        print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
+        full_dataset = ALMADataset(args.dataset_path)
+        
+        total_size = len(full_dataset)
+        train_size = int(0.7 * total_size)
+        val_size = int(0.15 * total_size)
+        test_size = total_size - train_size - val_size
+        
+        train_dataset, val_dataset, test_dataset = random_split(
+            full_dataset, 
+            [train_size, val_size, test_size],
+            generator=torch.Generator().manual_seed(42) 
+        )
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+        if not tuning_mode:
+            print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
+
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     if not tuning_mode:
         print("Initializing Spatial-Spectral Fourier Neural Operator 3D...")
@@ -244,12 +234,6 @@ def main(args):
             model, val_dataloader, criterion, device
         )
 
-        #oputna pruner
-        # if tuning_mode:
-        #     args.trial.report(val_flux, epoch)
-        #     if args.trial.should_prune():
-        #         print(f"Trial pruned by Optuna at epoch {epoch}")
-        #         raise optuna.exceptions.TrialPruned()
 
         scheduler.step()
         
@@ -306,6 +290,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Training FNO3d for ALMA Datacubes")
     
     parser.add_argument('--dataset_path', type=str, default='dataset/simulations', help='Path to the dataset directory')
+    parser.add_argument('--mock', action='store_true', help='Use mock dataset instead of ALMA dataset')
     parser.add_argument('--num_samples', type=int, default=200, help='Number of samples')
     parser.add_argument('--channels', type=int, default=16, help='Z dimension (frequency slices)')
     parser.add_argument('--img_size', type=int, default=32, help='Spatial dimension XY')

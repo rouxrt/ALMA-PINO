@@ -98,15 +98,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             running_l1_raw += l1.item()
             running_phys_loss += loss_phys.item()
 
-            # batch_max = clean.max().item()
-            # if batch_max > 0:
-            #     batch_psnr = psnr(pred_clean, clean, data_range=batch_max)
-            #     batch_ssim = ssim(pred_clean, clean, data_range=batch_max)
-            #     running_psnr += batch_psnr.item()
-            #     running_ssim += batch_ssim.item()
 
-
-            #masked flux error calculation
             for i in range(clean.size(0)):
                 sample_clean = clean[i]
                 sample_pred = pred_clean[i]
@@ -118,7 +110,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
                     running_psnr += p.item()
                     running_ssim += s.item()
 
-                    mask = sample_clean > 1e-6
+                    mask = sample_clean > (0.01 * sample_max)
 
                     true_flux = sample_clean[mask].sum()
                     pred_flux = sample_pred[mask].sum()
@@ -142,15 +134,9 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             running_flux_error / total_samples if total_samples > 0 else 0.0)
 
 def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
-    """
-    Fine-tuna il modello su un singolo campione di test usando solo la physics loss.
-    Ripristina i pesi originali dopo aver ottenuto la predizione.
-    Non richiede ground truth: è completamente self-supervised.
-    """
-    # Salva lo stato originale — FONDAMENTALE per non contaminare i campioni successivi
+
     original_state = copy.deepcopy(model.state_dict())
 
-    # Criterion solo con physics loss: lambda_data=0 evita che vengano usati clean (assenti)
     tto_criterion = CombinedLoss(
         lambda_data=0.0,
         lambda_phys=1.0,
@@ -163,7 +149,6 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
 
     dirty_dev = dirty.to(device)
     psf_dev   = psf.to(device)
-    # clean placeholder: zeros (non viene usato perché lambda_data=0)
     clean_placeholder = torch.zeros_like(dirty_dev)
 
     model.train()
@@ -178,12 +163,11 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         tto_optimizer.step()
 
-    # Predizione finale con i pesi ottimizzati
     model.eval()
     with torch.no_grad():
         final_pred = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
 
-    # Ripristina i pesi originali — il modello è intatto per il prossimo campione
+    # Restore the original model state to avoid affecting subsequent evaluations
     model.load_state_dict(original_state)
 
     return final_pred
@@ -191,21 +175,15 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
 
 def evaluate_with_tto(model, dataloader, criterion, device, channels,
                       tto_epochs=10, tto_lr=1e-5, verbose=False):
-    """
-    Come evaluate_model, ma applica TTO campione per campione prima di valutare.
-    Confronta le metriche pre- e post-TTO per misurare il guadagno reale.
-    """
+
     model.eval()
 
-    # Metriche pre-TTO (baseline)
     metrics_before = {"flux": 0.0, "psnr": 0.0, "ssim": 0.0}
-    # Metriche post-TTO
     metrics_after  = {"flux": 0.0, "psnr": 0.0, "ssim": 0.0}
 
     total_samples = 0
 
     with torch.no_grad():
-        # Baseline: predizione normale senza TTO
         for dirty, clean, psf in dataloader:
             dirty = dirty.to(device)
             clean = clean.to(device)
@@ -215,24 +193,19 @@ def evaluate_with_tto(model, dataloader, criterion, device, channels,
                 sc = clean[i]; sp = pred[i]
                 smax = sc.max()
                 if smax > 0:
-                    mask = sc > 1e-6
+                    mask = sc > (0.01 * smax)
                     err  = torch.abs(sp[mask].sum() - sc[mask].sum()) / (sc[mask].sum() + 1e-8)
                     metrics_before["flux"] += err.item() * 100
                     metrics_before["psnr"] += psnr(sp.unsqueeze(0), sc.unsqueeze(0), data_range=smax.item())
                     metrics_before["ssim"] += ssim(sp.unsqueeze(0), sc.unsqueeze(0), data_range=smax.item())
                 total_samples += 1
 
-    # Post-TTO: campione per campione (non in batch, per isolare la TTO)
     total_samples_tto = 0
     for batch_idx, (dirty, clean, psf) in enumerate(dataloader):
         for i in range(dirty.size(0)):
             d = dirty[i].unsqueeze(0)   # [1, C, H, W]
             c = clean[i].unsqueeze(0)
             p = psf[i].unsqueeze(0)
-
-            # if verbose:
-            #     print(f"  TTO campione {total_samples_tto + 1} | "
-            #           f"batch {batch_idx+1}, idx {i} | epoche={tto_epochs}, lr={tto_lr}")
 
             pred_tto = test_time_optimize(
                 model, d, p, device, tto_epochs, tto_lr, channels
@@ -241,7 +214,7 @@ def evaluate_with_tto(model, dataloader, criterion, device, channels,
             sc = c[0].to(device); sp = pred_tto[0]
             smax = sc.max()
             if smax > 0:
-                mask = sc > 1e-6
+                mask = sc > (0.01 * smax)
                 err  = torch.abs(sp[mask].sum() - sc[mask].sum()) / (sc[mask].sum() + 1e-8)
                 metrics_after["flux"] += err.item() * 100
                 metrics_after["psnr"] += psnr(sp.unsqueeze(0), sc.unsqueeze(0), data_range=smax.item())
@@ -274,49 +247,53 @@ def main(args):
 
     history_loss = {"train": [], "val": [], "train_data": [], "train_l1": [], "train_msssim": [], "train_phys": [], "val_data": [], "val_phys": []}
     
-    # if not tuning_mode:
-    #     print("Loading Mock Dataset...")
-    # train_dataset = MockGalaxyDatacubeDataset(
-    #     num_samples=args.num_samples, 
-    #     channels=args.channels, 
-    #     size=args.img_size,
-    #     extended_source=args.extended_source
-    # )
-    # val_dataset = MockGalaxyDatacubeDataset(
-    #     num_samples=args.num_samples // 5,
-    #     channels=args.channels,
-    #     size=args.img_size,
-    #     extended_source=args.extended_source
-    # )
-    # test_dataset = MockGalaxyDatacubeDataset(
-    #     num_samples=args.num_samples // 5,
-    #     channels=args.channels,
-    #     size=args.img_size,
-    #     extended_source=args.extended_source
-    # )
-    # train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    # val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    # test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
-    
-    full_dataset = ALMADataset(args.dataset_path)
-    
-    total_size = len(full_dataset)
-    train_size = int(0.7 * total_size)
-    val_size = int(0.15 * total_size)
-    test_size = total_size - train_size - val_size
-    
-    train_dataset, val_dataset, test_dataset = random_split(
-        full_dataset, 
-        [train_size, val_size, test_size],
-        generator=torch.Generator().manual_seed(42) 
-    )
+    if not tuning_mode and args.mock:
+        print("Loading Mock Dataset...")
 
-    if not tuning_mode:
-        print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
+    if args.mock:
+        train_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples, 
+            channels=args.channels, 
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        val_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples // 5,
+            channels=args.channels,
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        test_dataset = MockGalaxyDatacubeDataset(
+            num_samples=args.num_samples // 5,
+            channels=args.channels,
+            size=args.img_size,
+            extended_source=args.extended_source
+        )
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+    
+    else:
 
-    train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-    test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+        full_dataset = ALMADataset(args.dataset_path)
+        
+        total_size = len(full_dataset)
+        train_size = int(0.7 * total_size)
+        val_size = int(0.15 * total_size)
+        test_size = total_size - train_size - val_size
+        
+        train_dataset, val_dataset, test_dataset = random_split(
+            full_dataset, 
+            [train_size, val_size, test_size],
+            generator=torch.Generator().manual_seed(42) 
+        )
+
+        if not tuning_mode:
+            print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
+
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
 
     if not tuning_mode:
         print("Initializing Fourier Neural Operator...")
@@ -347,7 +324,6 @@ def main(args):
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'pifno3d.pth')
 
-    #fixed_val_batch = next(iter(val_dataloader))
 
     if not tuning_mode:
         print("Starting training loop...\n")
@@ -355,13 +331,6 @@ def main(args):
 
         tot_loss, data_loss, l1, msssim, phys_loss = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch, tuning_mode)
         val_tot, val_data, val_l1_raw, val_phys, _, _, val_flux = evaluate_model(model, val_dataloader, criterion, device)
-
-        #oputna pruner
-        # if tuning_mode:
-        #     args.trial.report(val_tot, epoch)
-        #     if args.trial.should_prune():
-        #         print(f"Trial pruned by Optuna at epoch {epoch}")
-        #         raise optuna.exceptions.TrialPruned()
 
         scheduler.step()
         
@@ -415,7 +384,7 @@ def main(args):
         print(f"Test SSIM : {test_ssim:.5f}")
         print(f"Test Flux Error: {test_flux:.5f}%")
 
-        # ── TEST TIME OPTIMIZATION ──
+        #TEST TIME OPTIMIZATION
         print("\n" + "="*50)
         print(f"Test Time Optimization | epoche={args.tto_epochs} | lr={args.tto_lr}")
         print("="*50)
@@ -448,6 +417,7 @@ if __name__ == '__main__':
     parser.add_argument('--tto_epochs', type=int,   default=10,   help='Epoche di TTO per campione')
     parser.add_argument('--tto_lr',     type=float, default=5e-6, help='Learning rate TTO (<<lr training)')
     parser.add_argument('--dataset_path', type=str, default='dataset/simulations', help='Path to the dataset directory')
+    parser.add_argument('--mock', action='store_true', help='Use mock dataset instead of ALMA dataset')
     parser.add_argument('--num_samples', type=int, default=200, help='Number of samples')
     parser.add_argument('--channels', type=int, default=16, help='Z dimension (frequency slices)')
     parser.add_argument('--img_size', type=int, default=32, help='Spatial dimension XY')

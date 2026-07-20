@@ -14,7 +14,7 @@ def save_predictions_FNO(dirty, clean, pred, epoch, tot_loss, l1_loss, msssim_lo
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
-    fig.suptitle(f'Epoca {epoch} | Loss Tot: {tot_loss:.5f} | L1: {l1_loss:.5f} | SSIM: {msssim_loss:.5f}', 
+    fig.suptitle(f'Epoch {epoch} | Loss Tot: {tot_loss:.5f} | L1: {l1_loss:.5f} | SSIM: {msssim_loss:.5f}', 
                  fontsize=14, fontweight='bold')
     
     global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
@@ -39,7 +39,7 @@ def save_predictions_FNO(dirty, clean, pred, epoch, tot_loss, l1_loss, msssim_lo
     plt.savefig(os.path.join(output_dir, f'epoch_{epoch:03d}_prediction.png'), dpi=150)
     plt.close() 
 
-def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, output_dir="results"):
+def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, output_dir="results", dim="2D"):
     os.makedirs(output_dir, exist_ok=True)
     
     c = dirty.shape[1] // 2 
@@ -50,7 +50,7 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
 
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
     
-    fig.suptitle(f'Epoca {epoch} | Loss Tot: {tot_loss:.5f} | Data (MSE): {data_loss:.5f} | Phys: {phys_loss:.5f}', 
+    fig.suptitle(f'Epoch {epoch} | Loss Tot: {tot_loss:.5f} | Data (MSE): {data_loss:.5f} | Phys: {phys_loss:.5f}', 
                  fontsize=14, fontweight='bold')
     
     global_vmin = min(dirty[0].min(), clean[0].min(), pred[0].min()).item()
@@ -63,7 +63,7 @@ def save_predictions(dirty, clean, pred, epoch, tot_loss, data_loss, phys_loss, 
     
 
     im1 = axes[1].imshow(img_pred, cmap='magma', vmin=global_vmin, vmax=global_vmax)
-    axes[1].set_title('PI-FNO Prediction')
+    axes[1].set_title(f'PI-FNO{dim} Prediction')
     axes[1].axis('off')
     
     im2 = axes[2].imshow(img_clean, cmap='magma', vmin=global_vmin, vmax=global_vmax)
@@ -165,9 +165,9 @@ def plot_loss_history_FNO(history: dict, title: str, save_path: str):
     
     ax1.plot(epochs, history["train"], color='blue', label='Train')
     ax1.plot(epochs, history["val"], color='orange', label='Validation')
-    ax1.set_title(f"MSE vs Epochs - {title}")
+    ax1.set_title(f"Loss vs Epochs - {title}")
     ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("MSE")
+    ax1.set_ylabel("Loss Value")
     ax1.set_yscale('log')
     ax1.grid(True, linestyle='--', alpha=0.7)
     ax1.legend()
@@ -198,9 +198,9 @@ def plot_loss_history(history: dict, title: str, save_path: str):
     
     ax1.plot(epochs, history["train"], color='blue', label='Train')
     ax1.plot(epochs, history["val"], color='orange', label='Validation')
-    ax1.set_title(f"MSE vs Epochs - {title}")
+    ax1.set_title(f"Loss vs Epochs - {title}")
     ax1.set_xlabel("Epoch")
-    ax1.set_ylabel("MSE")
+    ax1.set_ylabel("Loss Value")
     ax1.set_yscale('log')
     ax1.grid(True, linestyle='--', alpha=0.7)
     ax1.legend()

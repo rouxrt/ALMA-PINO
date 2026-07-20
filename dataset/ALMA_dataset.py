@@ -79,17 +79,17 @@ if __name__ == "__main__":
         for i, ch in enumerate(channels_to_plot):
             ax_clean = axes[0, i]
             im_clean = ax_clean.imshow(clean_img[ch], cmap='magma', origin='lower')
-            ax_clean.set_title(f"Clean - Canale {ch}")
+            ax_clean.set_title(f"Clean - Channel {ch}")
             fig.colorbar(im_clean, ax=ax_clean, fraction=0.046, pad=0.04)
             
             ax_dirty = axes[1, i]
             im_dirty = ax_dirty.imshow(dirty_img[ch], cmap='magma', origin='lower')
-            ax_dirty.set_title(f"Dirty - Canale {ch}")
+            ax_dirty.set_title(f"Dirty - Channel {ch}")
             fig.colorbar(im_dirty, ax=ax_dirty, fraction=0.046, pad=0.04)
 
             ax_psf = axes[2, i]
             im_psf = ax_psf.imshow(psf_img[ch], cmap='magma', origin='lower', vmin=-0.05, vmax=0.05)
-            ax_psf.set_title(f"PSF - Canale {ch}")
+            ax_psf.set_title(f"PSF - Channel {ch}")
             fig.colorbar(im_psf, ax=ax_psf, fraction=0.046, pad=0.04)
 
         plt.tight_layout()
