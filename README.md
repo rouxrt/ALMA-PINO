@@ -156,10 +156,6 @@ The framework is highly modular and can be dynamically configured using the foll
 #### FNO2D
 ```bash
 python train_fno2d.py   --epochs 300   --batch_size 4   --width 32   --modes 16   --alpha 0.03
-<<<<<<< HEAD
-=======
-
->>>>>>> 3e6889d123f8637724bacd227fe4ff39d3484cda
 ```
 
 #### FNO3D
