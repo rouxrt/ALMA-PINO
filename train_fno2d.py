@@ -75,7 +75,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
                 visualize_datacube(dirty, clean, pred_clean, output_dir="results_FNO2D/visualizations", model_name="FNO2D")
                 plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="results_FNO2D/", model_name="FNO2D")
                 show_datacube = False
-            loss_total, loss_data, l1, msssim, loss_phys = criterion(pred_clean, dirty, clean, psf)
+            loss_total, l1, msssim = criterion(pred_clean, dirty, clean, psf)
 
             running_total_loss += loss_total.item()
             running_l1_raw += l1.item()
@@ -245,7 +245,7 @@ def main(args):
                                  epoch, tot_loss, l1, msssim, output_dir="results_FNO2D/predictions", dim="2D")
     
     if not tuning_mode:
-        plot_loss_history_FNO(history_loss, title="FNO2D Training Loss", save_path="results_FNO2D/loss_history.png", dim="2D")
+        plot_loss_history_FNO(history_loss, title="FNO2D Training Loss", save_path="results_FNO2D/loss_history.png")
 
         print("\nTraining Completed!")
         print("\n" + "="*50)
