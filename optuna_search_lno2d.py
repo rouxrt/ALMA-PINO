@@ -4,27 +4,25 @@ import os
 import torch
 import gc
 from argparse import Namespace
-from train_fno2d import main
+from train_lno2d import main
 from models.utils import Logger
 from optuna.samplers import TPESampler
 
 def objective(trial):
 
-    lr = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
 
     modes = trial.suggest_categorical("modes", [8, 12, 16])
 
     alpha = trial.suggest_float("alpha", 0.01, 0.5)
 
-    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0)
-
-    batch_size = trial.suggest_categorical("batch_size", [4, 8, 16])
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
     
-    width = trial.suggest_categorical("width", [16, 32, 64])
+    width = trial.suggest_categorical("width", [32, 64, 128, 256])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
-    print(f"Parameters: LR={lr:.5f}, Modes={modes}, Alpha={alpha:.3f}, Phys={lambda_phys:.3f}, Width={width}, BS={batch_size}")
+    print(f"Parameters: LR={lr:.5f}, Modes={modes}, Alpha={alpha:.3f}, Width={width}, BS={batch_size}")
     print(f"{'='*60}\n")
 
     args = Namespace(
@@ -42,7 +40,7 @@ def objective(trial):
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
-        lambda_phys=lambda_phys,  
+        lambda_phys=0.0,  
         lambda_spec=0.0,
         alpha=alpha,       
         act="gelu",       
@@ -67,7 +65,7 @@ def objective(trial):
     return best_val_l1_raw, best_val_flux
 
 if __name__ == "__main__":
-    plots_dir = os.path.join("optuna_results", "optuna_plots_2d")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_lno2d")
     os.makedirs(plots_dir, exist_ok=True)
     sys.stdout = Logger(os.path.join(plots_dir, "log.txt"))
 
@@ -75,6 +73,9 @@ if __name__ == "__main__":
     sampler = TPESampler(seed=42)
     
     study = optuna.create_study(
+        study_name="lno2d",
+        storage="sqlite:///optuna_results/study_LNO2d.db", 
+        load_if_exists=True,
         sampler=sampler,
         directions=["minimize", "minimize"]
     )
@@ -113,7 +114,7 @@ if __name__ == "__main__":
 
 
     print("\nSaving optuna plots...")
-    plots_dir = os.path.join("optuna_results", "optuna_plots_2d")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_lno2d")
     os.makedirs(plots_dir, exist_ok=True)
 
     from optuna.visualization import (

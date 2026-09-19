@@ -311,7 +311,7 @@ def main(args):
     best_val_loss = float('inf')
     best_val_flux_error = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
-    best_model_path = os.path.join('checkpoints', 'fno2d.pth')
+    best_model_path = os.path.join('checkpoints', 'pifno2d.pth')
 
 
     if not tuning_mode:
