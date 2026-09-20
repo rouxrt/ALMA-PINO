@@ -10,17 +10,17 @@ from optuna.samplers import TPESampler
 
 def objective(trial):
 
-    lr = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
 
     modes = trial.suggest_categorical("modes", [8, 12, 16])
 
     alpha = trial.suggest_float("alpha", 0.01, 0.5)
 
-    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0)
+    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0, log=True)
 
-    batch_size = trial.suggest_categorical("batch_size", [4, 8, 16])
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
     
-    width = trial.suggest_categorical("width", [16, 32, 64])
+    width = trial.suggest_categorical("width", [32, 64, 128, 256])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")

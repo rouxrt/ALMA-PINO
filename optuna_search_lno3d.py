@@ -12,10 +12,10 @@ def objective(trial):
 
     modes_xy = trial.suggest_categorical("modes_xy", [8, 12, 16])
     modes_z = trial.suggest_categorical("modes_z", [4, 6, 8])
-    lr = trial.suggest_float("lr", 1e-4, 1e-3, log=True)
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
     alpha = trial.suggest_float("alpha", 0.01, 0.5)
-    width = trial.suggest_categorical("width", [16, 32, 64])
-    batch_size = trial.suggest_categorical("batch_size", [4, 8])
+    width = trial.suggest_categorical("width", [32, 64, 128, 256])
+    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
