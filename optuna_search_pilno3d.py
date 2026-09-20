@@ -25,6 +25,7 @@ def objective(trial):
 
     args = Namespace(
         dataset_path="dataset/simulations",
+        mock = False,
         num_samples=200,         
         channels=16,
         img_size=32,
