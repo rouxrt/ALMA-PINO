@@ -4,25 +4,27 @@ import os
 import torch
 import gc
 from argparse import Namespace
-from train_lno2d import main
+from train_pifno2d import main
 from models.utils import Logger
 from optuna.samplers import TPESampler
 
 def objective(trial):
 
-    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+    lr = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
 
     modes = trial.suggest_categorical("modes", [8, 12, 16])
 
     alpha = trial.suggest_float("alpha", 0.01, 0.5)
 
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
+    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0)
+
+    batch_size = trial.suggest_categorical("batch_size", [4, 8, 16])
     
-    width = trial.suggest_categorical("width", [32, 64, 128, 256])
+    width = trial.suggest_categorical("width", [16, 32, 64])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
-    print(f"Parameters: LR={lr:.5f}, Modes={modes}, Alpha={alpha:.3f}, Width={width}, BS={batch_size}")
+    print(f"Parameters: LR={lr:.5f}, Modes={modes}, Alpha={alpha:.3f}, Phys={lambda_phys:.3f}, Width={width}, BS={batch_size}")
     print(f"{'='*60}\n")
 
     args = Namespace(
@@ -36,11 +38,11 @@ def objective(trial):
         width=width,
         fourier_layers=4,
         pad_ratio=0.0,
-        epochs=100,                 
+        epochs=100,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
-        lambda_phys=0.0,  
+        lambda_phys=lambda_phys,  
         lambda_spec=0.0,
         alpha=alpha,       
         act="gelu",       
@@ -65,19 +67,19 @@ def objective(trial):
     return best_val_l1_raw, best_val_flux
 
 if __name__ == "__main__":
-    plots_dir = os.path.join("optuna_results", "optuna_plots_lno2d")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_pifno2d")
     os.makedirs(plots_dir, exist_ok=True)
     sys.stdout = Logger(os.path.join(plots_dir, "log.txt"))
 
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
- 
+     
     print(f"GPU Name: {name_device}")
-
+    
     sampler = TPESampler(seed=42)
     
     study = optuna.create_study(
-        study_name="lno2d",
-        storage="sqlite:///optuna_results/study_LNO2d.db", 
+        study_name="pifno2d",
+        storage="sqlite:///optuna_results/study_PIFNO2d.db", 
         load_if_exists=True,
         sampler=sampler,
         directions=["minimize", "minimize"]
@@ -117,7 +119,7 @@ if __name__ == "__main__":
 
 
     print("\nSaving optuna plots...")
-    plots_dir = os.path.join("optuna_results", "optuna_plots_lno2d")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_pifno2d")
     os.makedirs(plots_dir, exist_ok=True)
 
     from optuna.visualization import (

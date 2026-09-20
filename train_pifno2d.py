@@ -223,10 +223,10 @@ def evaluate_with_tto(model, dataloader, criterion, device, channels,
 
 def main(args):
     set_seed(42)
-    os.makedirs('training_results/results_PIFNO2D', exist_ok=True)
     tuning_mode = hasattr(args, 'trial') and args.trial is not None
 
     if not tuning_mode:
+        os.makedirs('training_results/results_PIFNO2D', exist_ok=True)
         sys.stdout = Logger(f"training_results/results_PIFNO2D/training_log.txt")
 
 

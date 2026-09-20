@@ -4,52 +4,50 @@ import os
 import torch
 import gc
 from argparse import Namespace
-from train_lno2d import main
+from train_lno3d import main
 from models.utils import Logger
 from optuna.samplers import TPESampler
 
 def objective(trial):
 
-    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
-
-    modes = trial.suggest_categorical("modes", [8, 12, 16])
-
+    modes_xy = trial.suggest_categorical("modes_xy", [8, 12, 16])
+    modes_z = trial.suggest_categorical("modes_z", [4, 6, 8])
+    lr = trial.suggest_float("lr", 1e-4, 1e-3, log=True)
     alpha = trial.suggest_float("alpha", 0.01, 0.5)
-
-    batch_size = trial.suggest_categorical("batch_size", [16, 32, 64, 128])
-    
-    width = trial.suggest_categorical("width", [32, 64, 128, 256])
+    width = trial.suggest_categorical("width", [16, 32, 64])
+    batch_size = trial.suggest_categorical("batch_size", [4, 8])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
-    print(f"Parameters: LR={lr:.5f}, Modes={modes}, Alpha={alpha:.3f}, Width={width}, BS={batch_size}")
+    print(f"Parameters: LR={lr:.5f}, Modes_xy={modes_xy}, Modes_z={modes_z}, Alpha={alpha:.3f}, Width={width}, BS={batch_size}")
     print(f"{'='*60}\n")
 
     args = Namespace(
         dataset_path="dataset/simulations",
-        mock = False,
         num_samples=200,         
         channels=16,
         img_size=32,
         extended_source=True,
-        modes=modes,                
+        modes_x=modes_xy,         
+        modes_y=modes_xy,         
+        modes_z=modes_z,                
         width=width,
         fourier_layers=4,
-        pad_ratio=0.0,
-        epochs=100,                 
+        pad_ratio=0.1,
+        epochs=100,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
         lambda_phys=0.0,  
         lambda_spec=0.0,
-        alpha=alpha,       
-        act="gelu",       
+        alpha=alpha,           
+        act="gelu",   
         trial=trial               
     )
 
     try:
         best_val_l1_raw, best_val_flux = main(args)
-        
+
     except RuntimeError as e:
         if "out of memory" in str(e).lower():
             print("\n[!] GPU Out of Memory. Skipping trial.\n")
@@ -65,7 +63,7 @@ def objective(trial):
     return best_val_l1_raw, best_val_flux
 
 if __name__ == "__main__":
-    plots_dir = os.path.join("optuna_results", "optuna_plots_lno2d")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_lno3d")
     os.makedirs(plots_dir, exist_ok=True)
     sys.stdout = Logger(os.path.join(plots_dir, "log.txt"))
 
@@ -74,13 +72,13 @@ if __name__ == "__main__":
     print(f"GPU Name: {name_device}")
 
     sampler = TPESampler(seed=42)
-    
+
     study = optuna.create_study(
-        study_name="lno2d",
-        storage="sqlite:///optuna_results/study_LNO2d.db", 
+        study_name="lno3d",
+        storage="sqlite:///optuna_results/study_LNO3d.db", 
         load_if_exists=True,
         sampler=sampler,
-        directions=["minimize", "minimize"]
+        directions= ["minimize","minimize"]
     )
 
     print("Starting Bayesian Optimization with Optuna (TPE)...")
@@ -90,13 +88,14 @@ if __name__ == "__main__":
     print("\n" + "="*50)
     print("OPTIMIZATION COMPLETED SUCCESSFULLY!")
 
-
+    
     pareto_front = study.best_trials
     print(f"\nFound {len(pareto_front)} Pareto-optimal trials:")
     print("="*50)
+    
 
     print("\nBest Trials (Leaderboard):")
-
+    
     pareto_front.sort(key=lambda t: t.values[0])
     
     top_n = min(10, len(pareto_front))
@@ -115,9 +114,8 @@ if __name__ == "__main__":
         print(params_str)
         sys.stdout.flush()
 
-
     print("\nSaving optuna plots...")
-    plots_dir = os.path.join("optuna_results", "optuna_plots_lno2d")
+    plots_dir = os.path.join("optuna_results", "optuna_plots_lno3d")
     os.makedirs(plots_dir, exist_ok=True)
 
     from optuna.visualization import (
@@ -126,7 +124,6 @@ if __name__ == "__main__":
         plot_slice,
         plot_pareto_front
     )
-    
     try:
         fig_pareto = plot_pareto_front(study, target_names=["L1 Error (Spatial)", "Flux Error (Global)"])
         fig_pareto.write_html(os.path.join(plots_dir, "pareto_front.html"))

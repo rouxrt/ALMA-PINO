@@ -125,10 +125,10 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 
 def main(args):
     set_seed(42)
-    os.makedirs('training_results/results_LNO3D', exist_ok=True)
     tuning_mode = hasattr(args, 'trial') and args.trial is not None
     
     if not tuning_mode:
+        os.makedirs('training_results/results_LNO3D', exist_ok=True)
         sys.stdout = Logger(f"training_results/results_LNO3D/training_log.txt")
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
