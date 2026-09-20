@@ -4,7 +4,6 @@ import torch
 import torch.optim as optim
 from torch.utils.data import DataLoader, random_split
 import os
-import optuna
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from dataset.ALMA_dataset import ALMADataset
@@ -72,8 +71,8 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             pred_clean = torch.clamp(raw_pred, min=0.0)
 
             if show_datacube:
-                visualize_datacube(dirty, clean, pred_clean, output_dir="results_LNO2D/visualizations", model_name="LNO2D")
-                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="results_LNO2D/", model_name="LNO2D")
+                visualize_datacube(dirty, clean, pred_clean, output_dir="training_results/results_LNO2D/visualizations", model_name="LNO2D")
+                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="training_results/results_LNO2D/", model_name="LNO2D")
                 show_datacube = False
             loss_total, l1, msssim = criterion(pred_clean, dirty, clean, psf)
 
@@ -117,17 +116,17 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
 
 def main(args):
     set_seed(42)
-    os.makedirs('results_LNO2D', exist_ok=True)
+    os.makedirs('training_results/results_LNO2D', exist_ok=True)
     tuning_mode = hasattr(args, 'trial') and args.trial is not None
 
     if not tuning_mode:
-        sys.stdout = Logger(f"results_LNO2D/training_log.txt")
+        sys.stdout = Logger(f"training_results/results_LNO2D/training_log.txt")
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
     if not tuning_mode:
-        print(f"Starting training on device: {device}")
+        print(f"Starting LNO2D training on device: {device}")
         print(f"GPU Name: {name_device}")
 
     history_loss = {"train": [], "val": [], "train_l1": [], "train_msssim": []}
@@ -242,10 +241,10 @@ def main(args):
                 sample_pred = model(sample_dirty.to(device))
             
             save_predictions_FNO(sample_dirty, sample_clean, sample_pred, 
-                                 epoch, tot_loss, l1, msssim, output_dir="results_LNO2D/predictions", dim="2D")
+                                 epoch, tot_loss, l1, msssim, output_dir="training_results/results_LNO2D/predictions", dim="2D")
     
     if not tuning_mode:
-        plot_loss_history_FNO(history_loss, title="LNO2D Training Loss", save_path="results_LNO2D/loss_history.png")
+        plot_loss_history_FNO(history_loss, title="LNO2D Training Loss", save_path="training_results/results_LNO2D/loss_history.png")
 
         print("\nTraining Completed!")
         print("\n" + "="*50)

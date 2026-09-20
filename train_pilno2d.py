@@ -8,7 +8,7 @@ import copy
 
 from dataset.mock_dataset import MockGalaxyDatacubeDataset
 from dataset.ALMA_dataset import ALMADataset
-from models.fno3d import FNO3d
+from models.lno2d import LNO2d
 from models.losses import CombinedLoss
 from models.utils import Logger, set_seed
 from visualize.plot import save_predictions, plot_loss_history, visualize_datacube, plot_spectral_profile
@@ -16,7 +16,6 @@ from torchmetrics.functional.image import peak_signal_noise_ratio as psnr
 from torchmetrics.functional.image import structural_similarity_index_measure as ssim
 
 def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuning_mode=False):
-
     model.train()
     running_total_loss = 0.0
     running_data_loss = 0.0
@@ -25,23 +24,18 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
     running_msssim_loss = 0.0
 
     for batch_idx, (dirty, clean, psf) in enumerate(dataloader):
-        dirty = dirty.to(device) 
-        clean = clean.to(device)  
+        dirty = dirty.to(device)
+        clean = clean.to(device)
         psf = psf.to(device)
 
         optimizer.zero_grad()
 
-        # Trasform from [B, Z, X, Y] to [B, 1, Z, X, Y] in order to add a feature channel
-        dirty_3d = dirty.unsqueeze(1)
-        
-        pred_clean_3d = model(dirty_3d)  
-
-        pred_clean = pred_clean_3d.squeeze(1) #remove feature channel in order to calculate the loss function
+        pred_clean = model(dirty)
 
         if (epoch % 10 == 0 and batch_idx == 0) and not tuning_mode:
             min_val = pred_clean.min().item()
             neg_percent = (pred_clean < 0).float().mean().item() * 100
-            print(f"   [Debug 3D] Min value: {min_val:.6f} | Negative pixels: {neg_percent:.1f}%")
+            print(f"  [Debug] Min value: {min_val:.6f} | Negative pixels: {neg_percent:.1f}%")
 
         loss_total, loss_data, l1, msssim, loss_phys = criterion(pred_clean, dirty, clean, psf)
 
@@ -56,7 +50,6 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
         running_phys_loss += loss_phys.item()
         running_l1_loss += l1.item()
         running_msssim_loss += msssim.item()
-    
     num_batches = len(dataloader)
     return (running_total_loss / num_batches, 
             running_data_loss / num_batches,
@@ -81,14 +74,13 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             clean = clean.to(device)
             psf = psf.to(device)
 
-            dirty_3d = dirty.unsqueeze(1) 
-            raw_pred = model(dirty_3d).squeeze(1)
+            raw_pred = model(dirty)
 
             pred_clean = torch.clamp(raw_pred, min=0.0)
 
             if show_datacube:
-                visualize_datacube(dirty, clean, pred_clean, output_dir="training_results/results_PIFNO3D/datacube_visualization")
-                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="training_results/results_PIFNO3D/")
+                visualize_datacube(dirty, clean, pred_clean, output_dir="training_results/results_PILNO2D/datacube_visualization")
+                plot_spectral_profile(clean, pred_clean, sample_idx=0, output_dir="training_results/results_PILNO2D/")
                 show_datacube = False
             loss_total, loss_data, l1, msssim, loss_phys = criterion(pred_clean, dirty, clean, psf)
 
@@ -97,7 +89,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             running_l1_raw += l1.item()
             running_phys_loss += loss_phys.item()
 
-
+            
             for i in range(clean.size(0)):
                 sample_clean = clean[i]
                 sample_pred = pred_clean[i]
@@ -133,7 +125,7 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             running_flux_error / total_samples if total_samples > 0 else 0.0)
 
 def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
-
+    
     original_state = copy.deepcopy(model.state_dict())
 
     tto_criterion = CombinedLoss(
@@ -152,7 +144,7 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
     model.train()
     for step in range(tto_epochs):
         tto_optimizer.zero_grad()
-        pred = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
+        pred = torch.clamp(model(dirty_dev), min=0.0)
 
         loss_total, _, _, _, phys_loss = tto_criterion(
             pred, dirty_dev, clean_placeholder, psf_dev
@@ -163,7 +155,7 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
 
     model.eval()
     with torch.no_grad():
-        final_pred = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
+        final_pred = torch.clamp(model(dirty_dev), min=0.0)
 
     # Restore the original model state to avoid affecting subsequent evaluations
     model.load_state_dict(original_state)
@@ -173,7 +165,7 @@ def test_time_optimize(model, dirty, psf, device, tto_epochs, tto_lr, channels):
 
 def evaluate_with_tto(model, dataloader, criterion, device, channels,
                       tto_epochs=10, tto_lr=1e-5, verbose=False):
-
+    
     model.eval()
 
     metrics_before = {"flux": 0.0, "psnr": 0.0, "ssim": 0.0}
@@ -185,7 +177,7 @@ def evaluate_with_tto(model, dataloader, criterion, device, channels,
         for dirty, clean, psf in dataloader:
             dirty = dirty.to(device)
             clean = clean.to(device)
-            pred = torch.clamp(model(dirty.unsqueeze(1)).squeeze(1), min=0.0)
+            pred  = torch.clamp(model(dirty), min=0.0)
 
             for i in range(clean.size(0)):
                 sc = clean[i]; sp = pred[i]
@@ -204,6 +196,7 @@ def evaluate_with_tto(model, dataloader, criterion, device, channels,
             d = dirty[i].unsqueeze(0)   # [1, C, H, W]
             c = clean[i].unsqueeze(0)
             p = psf[i].unsqueeze(0)
+
 
             pred_tto = test_time_optimize(
                 model, d, p, device, tto_epochs, tto_lr, channels
@@ -230,17 +223,17 @@ def evaluate_with_tto(model, dataloader, criterion, device, channels,
 
 def main(args):
     set_seed(42)
-    os.makedirs('training_results/results_PIFNO3D', exist_ok=True)
+    os.makedirs('training_results/results_PILNO2D', exist_ok=True)
     tuning_mode = hasattr(args, 'trial') and args.trial is not None
 
     if not tuning_mode:
-        sys.stdout = Logger(f"training_results/results_PIFNO3D/training_log.txt")
+        sys.stdout = Logger(f"training_results/results_PILNO2D/training_log.txt")
 
 
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
     if not tuning_mode:
-        print(f"Starting PIFNO3D training on device: {device}")
+        print(f"Starting PILNO2D training on device: {device}")
         print(f"GPU Name: {name_device}")
 
     history_loss = {"train": [], "val": [], "train_data": [], "train_l1": [], "train_msssim": [], "train_phys": [], "val_data": [], "val_phys": []}
@@ -298,14 +291,12 @@ def main(args):
     
     num_fourier_layers = args.fourier_layers
     
-    model = FNO3d(
-        modes1=[args.modes_z] * num_fourier_layers,  
-        modes2=[args.modes_x] * num_fourier_layers,  
-        modes3=[args.modes_y] * num_fourier_layers,  
+    model = LNO2d(
+        modes1=[args.modes] * num_fourier_layers,  
+        modes2=[args.modes] * num_fourier_layers,  
         width=args.width, 
-        in_dim=4,             
-        out_dim=1,            
-        pad_ratio=args.pad_ratio,
+        in_dim=args.channels + 2, 
+        out_dim=args.channels,
         act=args.act
     ).to(device)
 
@@ -320,7 +311,7 @@ def main(args):
     best_val_loss = float('inf')
     best_val_flux_error = float('inf')
     os.makedirs('checkpoints', exist_ok=True)
-    best_model_path = os.path.join('checkpoints', 'pifno3d.pth')
+    best_model_path = os.path.join('checkpoints', 'pilno2d.pth')
 
 
     if not tuning_mode:
@@ -329,6 +320,7 @@ def main(args):
 
         tot_loss, data_loss, l1, msssim, phys_loss = train_one_epoch(model, train_dataloader, criterion, optimizer, device, epoch, tuning_mode)
         val_tot, val_data, val_l1_raw, val_phys, _, _, val_flux = evaluate_model(model, val_dataloader, criterion, device)
+
 
         scheduler.step()
         
@@ -358,13 +350,13 @@ def main(args):
             sample_dirty, sample_clean, sample_psf = next(iter(val_dataloader))
             model.eval()
             with torch.no_grad():
-                sample_pred = model(sample_dirty.to(device).unsqueeze(1)).squeeze(1)
+                sample_pred = model(sample_dirty.to(device))
             
             save_predictions(sample_dirty, sample_clean, sample_pred, 
-                             epoch, tot_loss, data_loss, phys_loss, output_dir="training_results/results_PIFNO3D/predictions")
+                             epoch, tot_loss, data_loss, phys_loss, output_dir="training_results/results_PILNO2D/predictions")
     
     if not tuning_mode:
-        plot_loss_history(history_loss, title="PI-FNO Training Loss", save_path="training_results/results_PIFNO3D/loss_history.png")
+        plot_loss_history(history_loss, title="PI-LNO2D Training Loss", save_path="training_results/results_PILNO2D/loss_history.png")
 
         print("\nTraining Completed!")
         print("\n" + "="*50)
@@ -382,7 +374,7 @@ def main(args):
         print(f"Test SSIM : {test_ssim:.5f}")
         print(f"Test Flux Error: {test_flux:.5f}%")
 
-        #TEST TIME OPTIMIZATION
+        #TEST TIME OPTIMIZATION 
         print("\n" + "="*50)
         print(f"Test Time Optimization | epoche={args.tto_epochs} | lr={args.tto_lr}")
         print("="*50)
@@ -410,32 +402,28 @@ def main(args):
     return best_val_l1_raw, best_val_flux_error
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Training PIFNO3D for ALMA data")
+    parser = argparse.ArgumentParser(description="Training PILNO2D for ALMA data")
     
-    parser.add_argument('--tto_epochs', type=int,   default=10,   help='Epoche di TTO per campione')
+    parser.add_argument('--tto_epochs', type=int,   default=10,   help='TTO epochs per sample')
     parser.add_argument('--tto_lr',     type=float, default=5e-6, help='Learning rate TTO (<<lr training)')
     parser.add_argument('--dataset_path', type=str, default='dataset/simulations', help='Path to the dataset directory')
     parser.add_argument('--mock', action='store_true', help='Use mock dataset instead of ALMA dataset')
-    parser.add_argument('--num_samples', type=int, default=200, help='Number of samples')
-    parser.add_argument('--channels', type=int, default=16, help='Z dimension (frequency slices)')
+    parser.add_argument('--num_samples', type=int, default=200, help='Number of samples in the dataset')
+    parser.add_argument('--channels', type=int, default=16, help='Number of frequency slices')
     parser.add_argument('--img_size', type=int, default=32, help='Spatial dimension XY')
-    parser.add_argument('--extended_source', action='store_true', help='Generates extended sources')
+    parser.add_argument('--extended_source', action='store_true', help='If active, generates only extended sources')
     
-    parser.add_argument('--modes_x', type=int, default=8, help='Max Fourier modes on X axis')
-    parser.add_argument('--modes_y', type=int, default=8, help='Max Fourier modes on Y axis')
-    parser.add_argument('--modes_z', type=int, default=6, help='Max Fourier modes on Z/Freq axis')
+    parser.add_argument('--modes', type=int, default=8, help='Number of Fourier frequencies to keep')
+    parser.add_argument('--width', type=int, default=32, help='Latent dimension of the model')
+    parser.add_argument('--fourier_layers', type=int, default=4, help='Number of Fourier Layers in the model')
     
-    parser.add_argument('--width', type=int, default=16, help='Latent dimension (width)')
-    parser.add_argument('--fourier_layers', type=int, default=4, help='Number of Spectral Convolution Layers')
-    parser.add_argument('--pad_ratio', type=float, default=0.1, help='Padding ratio for 3D boundary protection')
-    
-    parser.add_argument('--epochs', type=int, default=20, help='Number of epochs')
+    parser.add_argument('--epochs', type=int, default=20, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
     parser.add_argument('--learning_rate', type=float, default=0.005, help='Learning rate')
     
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')
     parser.add_argument('--lambda_phys', type=float, default=0.5, help='Weight of the Physics Loss')
-    parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor between L1 and MS-SSIM')
+    parser.add_argument('--alpha', type=float, default=0.03, help='Weighting factor for combining L1 and MS-SSIM in the data loss')
     parser.add_argument('--act', type=str, default='gelu', choices=['gelu', 'relu', 'tanh', 'leaky_relu'], help='Activation function')
 
     args = parser.parse_args()
