@@ -134,24 +134,32 @@ def main(args):
     if not tuning_mode and args.mock:
         print("Loading Mock Dataset...")
 
+    pin_mem = torch.cuda.is_available()
+
     if args.mock:
         train_dataset = MockGalaxyDatacubeDataset(
             num_samples=args.num_samples, 
             channels=args.channels, 
             size=args.img_size,
-            extended_source=args.extended_source
+            extended_source=args.extended_source,
+            num_workers = args.num_workers,
+            pin_memory = pin_mem
         )
         val_dataset = MockGalaxyDatacubeDataset(
             num_samples=args.num_samples // 5,
             channels=args.channels,
             size=args.img_size,
-            extended_source=args.extended_source
+            extended_source=args.extended_source,
+            num_workes = args.num_workers,
+            pin_memory = pin_mem
         )
         test_dataset = MockGalaxyDatacubeDataset(
             num_samples=args.num_samples // 5,
             channels=args.channels,
             size=args.img_size,
-            extended_source=args.extended_source
+            extended_source=args.extended_source,
+            num_workers =  args.num_workers,
+            pin_memory = pin_mem
         )
         train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
         val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
