@@ -284,6 +284,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--epochs', type=int, default=20, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of CPU workers for dataloading')
     parser.add_argument('--learning_rate', type=float, default=0.005, help='Learning rate')
     
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')
