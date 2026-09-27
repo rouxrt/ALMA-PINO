@@ -18,7 +18,7 @@ class ALMADataset(Dataset):
         self.samples = []
 
         for sim_folder in sorted(self.dataset_dir.glob("sim_*")):
-            h5_path = sim_folder / "dataset.h5"
+            h5_path = sim_folder / f"{sim_folder.name}.h5"
             if h5_path.exists():
                 self.samples.append(h5_path)
         print(f"Found {len(self.samples)} valid datacubes in folder {dataset_dir}.")
