@@ -20,10 +20,16 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
     running_l1_loss = 0.0
     running_msssim_loss = 0.0
 
-    for batch_idx, (dirty, clean, psf) in enumerate(dataloader):
+    for batch_idx, (dirty, clean, uv_mask) in enumerate(dataloader):
         dirty = dirty.to(device)
         clean = clean.to(device)
-        psf = psf.to(device)
+        uv_mask = uv_mask.to(device)
+
+        uv_shifted = torch.fft.ifftshift(uv_mask, dim=(-2, -1))
+        psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
+        psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
+        psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
+        psf = psf_spatial / (psf_max + 1e-8)
 
         optimizer.zero_grad()
 
@@ -61,10 +67,16 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     total_samples = 0
 
     with torch.no_grad(): 
-        for dirty, clean, psf in dataloader:
+        for dirty, clean, uv_mask in dataloader:
             dirty = dirty.to(device)
             clean = clean.to(device)
-            psf = psf.to(device)
+            uv_mask = uv_mask.to(device)
+    
+            uv_shifted = torch.fft.ifftshift(uv_mask, dim=(-2, -1))
+            psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
+            psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
+            psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
+            psf = psf_spatial / (psf_max + 1e-8)
 
             raw_pred = model(dirty)
 
@@ -134,6 +146,8 @@ def main(args):
     if not tuning_mode and args.mock:
         print("Loading Mock Dataset...")
 
+    pin_mem = torch.cuda.is_available()
+
     if args.mock:
         train_dataset = MockGalaxyDatacubeDataset(
             num_samples=args.num_samples, 
@@ -153,9 +167,9 @@ def main(args):
             size=args.img_size,
             extended_source=args.extended_source
         )
-        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers =  args.num_workers, pin_memory = pin_mem )
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
     
     else:
 
@@ -175,9 +189,9 @@ def main(args):
         if not tuning_mode:
             print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
 
-        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers =  args.num_workers, pin_memory = pin_mem )
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
 
     if not tuning_mode:
         print("Initializing Fourier Neural Operator...")
@@ -276,6 +290,7 @@ if __name__ == '__main__':
     
     parser.add_argument('--epochs', type=int, default=20, help='Number of training epochs')
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size')
+    parser.add_argument('--num_workers', type=int, default=4, help='Number of CPU workers for dataloading')
     parser.add_argument('--learning_rate', type=float, default=0.005, help='Learning rate')
     
     parser.add_argument('--lambda_data', type=float, default=1.0, help='Weight of the Data Loss')

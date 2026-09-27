@@ -110,7 +110,6 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
             psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
             psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
             psf = psf_spatial / (psf_max + 1e-8)
-    
 
             raw_pred = model(dirty)
 
