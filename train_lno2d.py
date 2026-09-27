@@ -141,29 +141,23 @@ def main(args):
             num_samples=args.num_samples, 
             channels=args.channels, 
             size=args.img_size,
-            extended_source=args.extended_source,
-            num_workers = args.num_workers,
-            pin_memory = pin_mem
+            extended_source=args.extended_source
         )
         val_dataset = MockGalaxyDatacubeDataset(
             num_samples=args.num_samples // 5,
             channels=args.channels,
             size=args.img_size,
-            extended_source=args.extended_source,
-            num_workes = args.num_workers,
-            pin_memory = pin_mem
+            extended_source=args.extended_source
         )
         test_dataset = MockGalaxyDatacubeDataset(
             num_samples=args.num_samples // 5,
             channels=args.channels,
             size=args.img_size,
-            extended_source=args.extended_source,
-            num_workers =  args.num_workers,
-            pin_memory = pin_mem
+            extended_source=args.extended_source
         )
-        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers =  args.num_workers, pin_memory = pin_mem )
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
     
     else:
 
@@ -183,9 +177,9 @@ def main(args):
         if not tuning_mode:
             print(f"Dataset split: {train_size} Train, {val_size} Val, {test_size} Test.")
 
-        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True)
-        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False)
-        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False)
+        train_dataloader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers =  args.num_workers, pin_memory = pin_mem )
+        val_dataloader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
+        test_dataloader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, num_workers =  args.num_workers, pin_memory = pin_mem )
 
     if not tuning_mode:
         print("Initializing Laplace Neural Operator...")
