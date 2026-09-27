@@ -10,12 +10,20 @@ from optuna.samplers import TPESampler
 
 def objective(trial):
 
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+    alpha = trial.suggest_float("alpha", 0.01, 0.5, log=True)
+
     modes_xy = trial.suggest_categorical("modes_xy", [8, 12, 16])
-    modes_z = trial.suggest_categorical("modes_z", [4, 6, 8])
-    lr = trial.suggest_float("lr", 1e-4, 1e-3, log=True)
-    alpha = trial.suggest_float("alpha", 0.01, 0.5)
-    width = trial.suggest_categorical("width", [16, 32, 64])
-    batch_size = trial.suggest_categorical("batch_size", [4, 8])
+    modes_z = trial.suggest_categorical("modes_z", [6, 8, 12])
+
+    batch_size = trial.suggest_categorical("batch_size", [4, 8, 16])
+
+    if batch_size == 16:
+        width = trial.suggest_categorical("width", [16, 32])
+    elif batch_size == 8:
+        width = trial.suggest_categorical("width", [32, 64])
+    else: # batch_size == 4
+        width = trial.suggest_categorical("width", [64, 96, 128])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
@@ -35,12 +43,13 @@ def objective(trial):
         width=width,
         fourier_layers=4,
         pad_ratio=0.1,
-        epochs=100,                
+        epochs=20,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
         lambda_phys=0.0,  
         lambda_spec=0.0,
+        num_workers=8,
         alpha=alpha,           
         act="gelu",   
         trial=trial               
@@ -80,7 +89,7 @@ if __name__ == "__main__":
 
     print("Starting Bayesian Optimization with Optuna (TPE)...")
     
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=50)
     
     print("\n" + "="*50)
     print("OPTIMIZATION COMPLETED SUCCESSFULLY!")

@@ -10,15 +10,12 @@ from optuna.samplers import TPESampler
 
 def objective(trial):
 
-    lr = trial.suggest_float("lr", 1e-4, 5e-3, log=True)
+    lr = trial.suggest_float("lr", 1e-4, 1e-2, log=True)
+    alpha = trial.suggest_float("alpha", 0.01, 0.5, log=True)
 
-    modes = trial.suggest_categorical("modes", [8, 12, 16])
-
-    alpha = trial.suggest_float("alpha", 0.01, 0.5)
-
-    batch_size = trial.suggest_categorical("batch_size", [4, 8, 16])
-    
-    width = trial.suggest_categorical("width", [16, 32, 64])
+    batch_size = trial.suggest_categorical("batch_size", [32, 64, 128])
+    width = trial.suggest_categorical("width", [64, 128, 256])
+    modes = trial.suggest_categorical("modes", [16, 24, 32])
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
@@ -29,19 +26,20 @@ def objective(trial):
         dataset_path="dataset/simulations",
         mock = False,
         num_samples=200,         
-        channels=16,
+        channels=64,
         img_size=32,
         extended_source=True,
         modes=modes,                
         width=width,
         fourier_layers=4,
         pad_ratio=0.0,
-        epochs=100,                
+        epochs=20,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
         lambda_phys=0.0,  
         lambda_spec=0.0,
+        num_workers=8,
         alpha=alpha,       
         act="gelu",       
         trial=trial               
@@ -69,6 +67,9 @@ if __name__ == "__main__":
     os.makedirs(plots_dir, exist_ok=True)
     sys.stdout = Logger(os.path.join(plots_dir, "log.txt"))
 
+    name_device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
+ 
+    print(f"GPU Name: {name_device}")
 
     sampler = TPESampler(seed=42)
     
@@ -82,7 +83,7 @@ if __name__ == "__main__":
 
     print("Starting Bayesian Optimization with Optuna (TPE)...")
     
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=50)
     
     print("\n" + "="*50)
     print("OPTIMIZATION COMPLETED SUCCESSFULLY!")
