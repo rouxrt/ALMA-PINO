@@ -38,20 +38,26 @@ class ALMADataset(Dataset):
         clean_tensor = torch.tensor(clean, dtype=torch.float32)
         uv_mask_tensor = torch.tensor(uv_mask, dtype=torch.float32)
         
-        uv_shifted = torch.fft.ifftshift(uv_mask_tensor, dim=(-2, -1))
+        # uv_shifted = torch.fft.ifftshift(uv_mask_tensor, dim=(-2, -1))
         
-        psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
+        # psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
         
-        psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
+        # psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
         
-        psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
-        psf_tensor = psf_spatial / (psf_max + 1e-8)
+        # psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
+        # psf_tensor = psf_spatial / (psf_max + 1e-8)
         
+        # dirty_tensor = torch.nan_to_num(dirty_tensor, nan=0.0)
+        # clean_tensor = torch.nan_to_num(clean_tensor, nan=0.0)
+        # psf_tensor = torch.nan_to_num(psf_tensor, nan=0.0)
+
+        # return dirty_tensor, clean_tensor, psf_tensor
+
         dirty_tensor = torch.nan_to_num(dirty_tensor, nan=0.0)
         clean_tensor = torch.nan_to_num(clean_tensor, nan=0.0)
-        psf_tensor = torch.nan_to_num(psf_tensor, nan=0.0)
+        uv_mask_tensor = torch.nan_to_num(uv_mask_tensor, nan=0.0)
 
-        return dirty_tensor, clean_tensor, psf_tensor
+        return dirty_tensor, clean_tensor, uv_mask_tensor
 
 #TEST
 if __name__ == "__main__":

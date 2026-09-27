@@ -20,10 +20,45 @@ def train_one_epoch(model, dataloader, criterion, optimizer, device, epoch, tuni
     running_l1_loss = 0.0
     running_msssim_loss = 0.0
 
-    for batch_idx, (dirty, clean, psf) in enumerate(dataloader):
+    # for batch_idx, (dirty, clean, psf) in enumerate(dataloader):
+    #     dirty = dirty.to(device)
+    #     clean = clean.to(device)
+    #     psf = psf.to(device)
+
+    #     optimizer.zero_grad()
+
+    #     pred_clean = model(dirty)
+
+    #     if (epoch % 10 == 0 and batch_idx == 0) and not tuning_mode:
+    #         min_val = pred_clean.min().item()
+    #         neg_percent = (pred_clean < 0).float().mean().item() * 100
+    #         print(f"  [Debug] Min value: {min_val:.6f} | Negative pixels: {neg_percent:.1f}%")
+
+    #     loss_total, l1, msssim = criterion(pred_clean, dirty, clean, psf)
+
+    #     loss_total.backward()
+
+    #     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+    #     optimizer.step()
+
+    #     running_total_loss += loss_total.item()
+    #     running_l1_loss += l1.item()
+    #     running_msssim_loss += msssim.item()
+    # num_batches = len(dataloader)
+    # return (running_total_loss / num_batches,
+    #         running_l1_loss / num_batches,
+    #         running_msssim_loss / num_batches)
+    for batch_idx, (dirty, clean, uv_mask) in enumerate(dataloader):
         dirty = dirty.to(device)
         clean = clean.to(device)
-        psf = psf.to(device)
+        uv_mask = uv_mask.to(device)
+
+        uv_shifted = torch.fft.ifftshift(uv_mask, dim=(-2, -1))
+        psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
+        psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
+        psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
+        psf = psf_spatial / (psf_max + 1e-8)
 
         optimizer.zero_grad()
 
@@ -61,10 +96,21 @@ def evaluate_model(model, dataloader, criterion, device, show_datacube=False):
     total_samples = 0
 
     with torch.no_grad(): 
-        for dirty, clean, psf in dataloader:
+        # for dirty, clean, psf in dataloader:
+        #     dirty = dirty.to(device)
+        #     clean = clean.to(device)
+        #     psf = psf.to(device)
+        for dirty, clean, uv_mask in dataloader:
             dirty = dirty.to(device)
             clean = clean.to(device)
-            psf = psf.to(device)
+            uv_mask = uv_mask.to(device)
+    
+            uv_shifted = torch.fft.ifftshift(uv_mask, dim=(-2, -1))
+            psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
+            psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
+            psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
+            psf = psf_spatial / (psf_max + 1e-8)
+    
 
             raw_pred = model(dirty)
 
