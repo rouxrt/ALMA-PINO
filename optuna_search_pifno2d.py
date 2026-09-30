@@ -28,7 +28,7 @@ def objective(trial):
         mock = False,
         num_samples=200,         
         channels=64,
-        img_size=32,
+        img_size=128,
         extended_source=True,
         modes=modes,                
         width=width,
