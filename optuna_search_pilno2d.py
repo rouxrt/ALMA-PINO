@@ -33,7 +33,7 @@ def objective(trial):
         modes=modes,                
         width=width,
         fourier_layers=4,
-        pad_ratio=0.0,
+        pad_ratio=0.1,
         epochs=20,                 
         batch_size=batch_size,    
         learning_rate=lr,         
