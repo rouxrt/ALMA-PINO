@@ -19,9 +19,9 @@ def objective(trial):
     batch_size = trial.suggest_categorical("batch_size", [2, 4, 8])
     
     if batch_size == 8:
-        width = trial.suggest_categorical("width", [16, 32, 64])
+        width = trial.suggest_categorical("width_bs8", [16, 32, 64])
     else: 
-        width = trial.suggest_categorical("width", [32, 64, 96])
+        width = trial.suggest_categorical("width_bslow", [32, 64, 96])
 
 
     print(f"\n{'='*60}")
