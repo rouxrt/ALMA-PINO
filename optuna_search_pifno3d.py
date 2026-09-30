@@ -32,7 +32,7 @@ def objective(trial):
     print(f"{'='*60}\n")
 
     args = Namespace(
-        dataset_path="dataset/simulations",
+        dataset_path="/data1/rtessitore/almasim/alma_dataset/dataset",
         mock = False,
         num_samples=200,         
         channels=16,
