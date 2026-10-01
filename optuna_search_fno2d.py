@@ -7,6 +7,7 @@ from argparse import Namespace
 from train_fno2d import main
 from models.utils import Logger
 from optuna.samplers import TPESampler
+from optuna.trial import TrialState
 
 def objective(trial):
 
@@ -23,7 +24,7 @@ def objective(trial):
     print(f"{'='*60}\n")
 
     args = Namespace(
-        dataset_path="/data1/rtessitore/almasim/alma_dataset/dataset",
+        dataset_path="dataset/simulations",
         mock = False,
         num_samples=200,         
         channels=64,
@@ -33,7 +34,7 @@ def objective(trial):
         width=width,
         fourier_layers=4,
         pad_ratio=0.1,
-        epochs=20,                
+        epochs=2,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
@@ -71,7 +72,7 @@ if __name__ == "__main__":
  
     print(f"GPU Name: {name_device}")
 
-    sampler = TPESampler(seed=42)
+    sampler = TPESampler()
     
     study = optuna.create_study(
         study_name="fno2d",
@@ -82,9 +83,23 @@ if __name__ == "__main__":
     )
 
     print("Starting Bayesian Optimization with Optuna (TPE)...")
+
+    target_trials = 4
+
+    valid_states = [TrialState.COMPLETE, TrialState.PRUNED]
+    valid_trials_count = len(study.get_trials(states=valid_states))
+
+    trials_to_run = max(0, target_trials - valid_trials_count)
+
+    print(f"Trials already in DB: {valid_trials_count}")
     
-    study.optimize(objective, n_trials=50)
-    
+    if trials_to_run > 0:
+        print(f"{trials_to_run} trials to run.")
+        study.optimize(objective, n_trials=trials_to_run)
+    else:
+        print(f"Target of {target_trials} trials already reached! Skipping training and generating plots.")
+
+
     print("\n" + "="*50)
     print("OPTIMIZATION COMPLETED SUCCESSFULLY!")
 
