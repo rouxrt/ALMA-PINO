@@ -34,7 +34,7 @@ def objective(trial):
         width=width,
         fourier_layers=4,
         pad_ratio=0.1,
-        epochs=2,                
+        epochs=20,                
         batch_size=batch_size,    
         learning_rate=lr,         
         lambda_data=1.0,
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 
     print("Starting Bayesian Optimization with Optuna (TPE)...")
 
-    target_trials = 4
+    target_trials = 50
 
     valid_states = [TrialState.COMPLETE, TrialState.PRUNED]
     valid_trials_count = len(study.get_trials(states=valid_states))

@@ -233,6 +233,11 @@ def main(args):
     best_val_loss = float('inf')
     best_val_l1_raw = float('inf')
     best_val_flux_error = float('inf')
+
+    patience = 15  
+    epochs_no_improve = 0  
+    early_stop_triggered = False
+    
     os.makedirs('checkpoints', exist_ok=True)
     best_model_path = os.path.join('checkpoints', 'lno3d.pth')
 
@@ -268,7 +273,18 @@ def main(args):
             if not tuning_mode:
                 print(f"New best 3D model saved with Val Loss: {best_val_loss:.5f}")
         
-        if (epoch % 5 == 0 or epoch == args.epochs) and not tuning_mode:
+        else:
+            epochs_no_improve += 1
+            if not tuning_mode:
+                print(f"No improvement in Val Loss for {epochs_no_improve} epoch(s).")
+        
+        if epochs_no_improve >= patience:
+            if not tuning_mode:
+                print(f"\n[!] Early Stopping triggered! Val Loss hasn't improved for {patience} epochs.")
+            early_stop_triggered = True
+            break
+        
+        if (epoch % 5 == 0 or epoch == args.epochs or early_stop_triggered) and not tuning_mode:
             sample_dirty, sample_clean, sample_psf = next(iter(val_dataloader))
             model.eval()
             with torch.no_grad():
