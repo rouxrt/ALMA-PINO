@@ -16,7 +16,7 @@ def objective(trial):
 
     modes_xy = trial.suggest_categorical("modes_xy", [8, 12, 16])
     modes_z = trial.suggest_categorical("modes_z", [6, 8, 12])
-    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0, log=True)
+    lambda_phys = trial.suggest_float("lambda_phys", 0.001, 0.1, log=True)
 
     batch_size = trial.suggest_categorical("batch_size", [2, 4, 8])
     

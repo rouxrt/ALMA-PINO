@@ -17,7 +17,7 @@ def objective(trial):
     batch_size = trial.suggest_categorical("batch_size", [32, 64, 128])
     width = trial.suggest_categorical("width", [64, 128, 256])
     modes = trial.suggest_categorical("modes", [8, 12, 16])
-    lambda_phys = trial.suggest_float("lambda_phys", 0.1, 10.0, log=True)
+    lambda_phys = trial.suggest_float("lambda_phys", 0.001, 0.1, log=True)
 
     print(f"\n{'='*60}")
     print(f"STARTING TRIAL {trial.number}")
