@@ -520,7 +520,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1000)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
@@ -625,7 +625,7 @@ if __name__ == "__main__":
                         help="TTO learning rate for PI-FNO2d (Keep << lr training)")
     parser.add_argument("--tto_epochs_pifno3d", type=int,   default=10,
                         help="TTO epochs for PI-FNO3d")
-    parser.add_argument("--tto_lr_pifno3d",     type=float, default=1e-7,
+    parser.add_argument("--tto_lr_pifno3d",     type=float, default=5e-6,
                         help="TTO learning rate for PI-FNO3d (Keep << lr training)")
     parser.add_argument("--tto_epochs_pilno2d", type=int,   default=10,
                         help="TTO epochs for PI-LNO2d")
@@ -633,7 +633,7 @@ if __name__ == "__main__":
                         help="TTO learning rate for PI-LNO2d (Keep << lr training)")
     parser.add_argument("--tto_epochs_pilno3d", type=int,   default=10,
                         help="TTO epochs for PI-LNO3d")
-    parser.add_argument("--tto_lr_pilno3d",     type=float, default=1e-7,
+    parser.add_argument("--tto_lr_pilno3d",     type=float, default=5e-6,
                         help="TTO learning rate for PI-LNO3d (Keep << lr training)")
 
     # Output
