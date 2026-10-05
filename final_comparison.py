@@ -218,8 +218,16 @@ INFER_FN = {
     "pilno3d": infer_fno3d,
 }
 
+def uv_to_psf(uv_mask):
+    uv_shifted = torch.fft.ifftshift(uv_mask, dim=(-2, -1))
+    psf_complex = torch.fft.ifft2(uv_shifted, dim=(-2, -1))
+    psf_spatial = torch.fft.fftshift(psf_complex.real, dim=(-2, -1))
+    psf_max = psf_spatial.amax(dim=(-2, -1), keepdim=True)
+    psf = psf_spatial / (psf_max + 1e-8)
 
-def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d):
+    return psf
+
+def tto_optimize(model, dirty, uv_mask, device, channels, tto_epochs, tto_lr, is_3d):
     original_state = copy.deepcopy(model.state_dict())
 
     tto_criterion = CombinedLoss(
@@ -229,35 +237,27 @@ def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d)
         channels=channels,
     ).to(device)
 
-    tto_opt = optim.Adam(model.parameters(), lr=tto_lr)
-    dirty_dev = dirty.to(device)
-    psf_dev = psf.to(device)
+    tto_opt     = optim.Adam(model.parameters(), lr=tto_lr)
+    dirty_dev   = dirty.to(device)
+    uv_mask_dev = uv_mask.to(device)
+    psf_dev     = uv_to_psf(uv_mask_dev).to(device)
     placeholder = torch.zeros_like(dirty_dev)  
 
-    # 1. FORZA LA MODALITÀ EVAL! Le normalizzazioni restano congelate, 
-    # ma l'autograd continuerà a calcolare i gradienti per tto_opt.
-    model.eval() 
-    
-    for step in range(tto_epochs):
+    model.train()
+    for _ in range(tto_epochs):
         tto_opt.zero_grad()
 
-        # Raw prediction senza clamp
         if is_3d:
-            raw_pred = model(dirty_dev.unsqueeze(1)).squeeze(1)
+            pred = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
         else:
-            raw_pred = model(dirty_dev)
+            pred = torch.clamp(model(dirty_dev), min=0.0)
 
-        loss, *_ = tto_criterion(raw_pred, dirty_dev, placeholder, psf_dev)
+        loss, *_ = tto_criterion(pred, dirty_dev, placeholder, psf_dev)
         loss.backward()
-        
-        # Scommenta questo print temporaneamente per vedere la magia in azione
-        # if step == 0 or step == tto_epochs - 1:
-        #     print(f"   [TTO Step {step}] Phys Loss: {loss.item():.6f}")
-
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         tto_opt.step()
 
-    # Fine TTO: valutiamo il risultato finale
+    model.eval()
     with torch.no_grad():
         if is_3d:
             pred_tto = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
@@ -517,25 +517,25 @@ def run_benchmark(args):
                     predictions_for_plot[f"{name}+TTO"] = pred_tto.detach().cpu()
 
         # CLEAN
-        timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1)[0]
-        t_clean = timer.stop()
+        # timer.start()
+        # pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1)[0]
+        # t_clean = timer.stop()
 
-        m_clean = compute_metrics(pred_clean, clean_s, device)
-        if m_clean:
-            m_clean["time_ms"] = t_clean
-            accumulate(acc["CLEAN"], m_clean)
-            n_valid["CLEAN"] += 1
+        # m_clean = compute_metrics(pred_clean, clean_s, device)
+        # if m_clean:
+        #     m_clean["time_ms"] = t_clean
+        #     accumulate(acc["CLEAN"], m_clean)
+        #     n_valid["CLEAN"] += 1
 
-        if sample_idx < args.n_viz:
-            predictions_for_plot["CLEAN"] = pred_clean.detach().cpu()
-            save_comparison_plot(
-                sample_idx,
-                dirty_s,
-                clean_s,
-                predictions_for_plot,
-                output_dir=os.path.join(args.output_dir, "comparisons"),
-            )
+        # if sample_idx < args.n_viz:
+        #     predictions_for_plot["CLEAN"] = pred_clean.detach().cpu()
+        #     save_comparison_plot(
+        #         sample_idx,
+        #         dirty_s,
+        #         clean_s,
+        #         predictions_for_plot,
+        #         output_dir=os.path.join(args.output_dir, "comparisons"),
+        #     )
 
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
