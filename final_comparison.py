@@ -509,7 +509,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1000)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=10000)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
