@@ -224,36 +224,41 @@ def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d)
 
     tto_criterion = CombinedLoss(
         lambda_data=0.0,
-        lambda_phys=1.0,  # TTO usa solo la fisica
+        lambda_phys=1.0,
         alpha=0.0,
         channels=channels,
     ).to(device)
 
-    tto_opt     = optim.Adam(model.parameters(), lr=tto_lr)
-    dirty_dev   = dirty.to(device)
-    psf_dev     = psf.to(device)
+    tto_opt = optim.Adam(model.parameters(), lr=tto_lr)
+    dirty_dev = dirty.to(device)
+    psf_dev = psf.to(device)
     placeholder = torch.zeros_like(dirty_dev)  
 
-    model.train()
-    for _ in range(tto_epochs):
+    # 1. FORZA LA MODALITÀ EVAL! Le normalizzazioni restano congelate, 
+    # ma l'autograd continuerà a calcolare i gradienti per tto_opt.
+    model.eval() 
+    
+    for step in range(tto_epochs):
         tto_opt.zero_grad()
 
-        # 1. PRED RAW: NON applicare il clamp qui!
+        # Raw prediction senza clamp
         if is_3d:
             raw_pred = model(dirty_dev.unsqueeze(1)).squeeze(1)
         else:
             raw_pred = model(dirty_dev)
 
-        # 2. CALCOLO DELLA LOSS sui dati grezzi, per non rompere il calcolo differenziale
         loss, *_ = tto_criterion(raw_pred, dirty_dev, placeholder, psf_dev)
-        
         loss.backward()
+        
+        # Scommenta questo print temporaneamente per vedere la magia in azione
+        # if step == 0 or step == tto_epochs - 1:
+        #     print(f"   [TTO Step {step}] Phys Loss: {loss.item():.6f}")
+
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         tto_opt.step()
 
-    model.eval()
+    # Fine TTO: valutiamo il risultato finale
     with torch.no_grad():
-        # 3. Solo per l'estrazione finale applichiamo il clamp per garantire la positività
         if is_3d:
             pred_tto = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
         else:
