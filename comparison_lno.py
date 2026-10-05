@@ -295,7 +295,7 @@ def load_pifno3d(path, args, device):
     model = FNO3d(
         modes1=[args.modes_z_pifno3d] * args.fourier_layers,
         modes2=[args.modes_pifno3d] * args.fourier_layers,
-        modes3=[args.modes_z_pifno3d] * args.fourier_layers,
+        modes3=[args.modes_pifno3d] * args.fourier_layers,
         width=args.width_pifno3d,
         in_dim=4,
         out_dim=1,

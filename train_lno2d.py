@@ -283,6 +283,7 @@ def main(args):
             best_val_l1_raw = val_l1_raw
             best_val_flux_error = val_flux
             torch.save(model.state_dict(), best_model_path)
+            
             epochs_no_improve = 0
             if not tuning_mode:
                 print(f"New best model saved with Val Loss: {best_val_loss:.5f}")
