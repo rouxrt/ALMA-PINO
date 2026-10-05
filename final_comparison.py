@@ -239,9 +239,9 @@ def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d)
         tto_opt.zero_grad()
 
         if is_3d:
-            pred = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
+            pred = model(dirty_dev.unsqueeze(1)).squeeze(1)
         else:
-            pred = torch.clamp(model(dirty_dev), min=0.0)
+            pred = model(dirty_dev)
 
         loss, *_ = tto_criterion(pred, dirty_dev, placeholder, psf_dev)
         loss.backward()
