@@ -16,6 +16,8 @@ from torchmetrics.functional.image import structural_similarity_index_measure as
 from dataset.ALMA_dataset import ALMADataset
 from models.fno2d import FNO2d
 from models.fno3d import FNO3d
+from models.lno2d import LNO2d
+from models.lno3d import LNO3d
 from models.losses import CombinedLoss
 from models.utils import set_seed
 from models.CLEAN import hogbom_clean_batch
@@ -43,6 +45,96 @@ class Timer:
         else:
             return (time.perf_counter() - self._t0) * 1000   # ms
 
+def load_lno2d(path, args, device):
+    model = LNO2d(
+        modes1=[args.modes_lno2d] * args.fourier_layers,
+        modes2=[args.modes_lno2d] * args.fourier_layers,
+        width=args.width_lno2d,
+        in_dim=args.channels + 2,
+        out_dim=args.channels,
+        act=args.act,
+    ).to(device)
+
+    model.load_state_dict(
+        torch.load(
+            path,
+            map_location=device,
+            weights_only=True,
+        )
+    )
+
+    model.eval()
+    return model
+
+
+def load_lno3d(path, args, device):
+    model = LNO3d(
+        modes1=[args.modes_z_lno3d] * args.fourier_layers,
+        modes2=[args.modes_lno3d] * args.fourier_layers,
+        modes3=[args.modes_lno3d] * args.fourier_layers,
+        width=args.width_lno3d,
+        in_dim=4,
+        out_dim=1,
+        pad_ratio=args.pad_ratio,
+        act=args.act,
+    ).to(device)
+
+    model.load_state_dict(
+        torch.load(
+            path,
+            map_location=device,
+            weights_only=True,
+        )
+    )
+
+    model.eval()
+    return model
+
+
+def load_pilno2d(path, args, device):
+    model = LNO2d(
+        modes1=[args.modes_pilno2d] * args.fourier_layers,
+        modes2=[args.modes_pilno2d] * args.fourier_layers,
+        width=args.width_pilno2d,
+        in_dim=args.channels + 2,
+        out_dim=args.channels,
+        act=args.act,
+    ).to(device)
+
+    model.load_state_dict(
+        torch.load(
+            path,
+            map_location=device,
+            weights_only=True,
+        )
+    )
+
+    model.eval()
+    return model
+
+
+def load_pilno3d(path, args, device):
+    model = LNO3d(
+        modes1=[args.modes_z_pilno3d] * args.fourier_layers,
+        modes2=[args.modes_pilno3d] * args.fourier_layers,
+        modes3=[args.modes_pilno3d] * args.fourier_layers,
+        width=args.width_pilno3d,
+        in_dim=4,
+        out_dim=1,
+        pad_ratio=args.pad_ratio,
+        act=args.act,
+    ).to(device)
+
+    model.load_state_dict(
+        torch.load(
+            path,
+            map_location=device,
+            weights_only=True,
+        )
+    )
+
+    model.eval()
+    return model
 
 
 def load_fno2d(path, args, device):
@@ -116,10 +208,14 @@ def infer_fno3d(model, dirty, device):
 
 
 INFER_FN = {
-    "fno2d":   infer_fno2d,
-    "fno3d":   infer_fno3d,
+    "fno2d": infer_fno2d,
+    "fno3d": infer_fno3d,
     "pifno2d": infer_fno2d,
     "pifno3d": infer_fno3d,
+    "lno2d": infer_fno2d,
+    "lno3d": infer_fno3d,
+    "pilno2d": infer_fno2d,
+    "pilno3d": infer_fno3d,
 }
 
 
@@ -335,7 +431,14 @@ def run_benchmark(args):
                      (args.tto_epochs_pifno2d, args.tto_lr_pifno2d)),
         "PI-FNO3d": (args.pifno3d, load_pifno3d, True,  True,
                      (args.tto_epochs_pifno3d, args.tto_lr_pifno3d)),
-    }
+        "LNO2d":    (args.lno2d, load_lno2d, False, False, None),
+        "LNO3d":    (args.lno3d, load_lno3d, True, False, None),
+        "PI-LNO2d": (args.pilno2d, load_pilno2d, False, True,
+                     (args.tto_epochs_pilno2d, args.tto_lr_pilno2d)),
+        "PI-LNO3d": (args.pilno3d, load_pilno3d, True, True,
+                     (args.tto_epochs_pilno3d, args.tto_lr_pilno3d)),
+                    }
+    
 
     for name, (path, loader_fn, is_3d, do_tto, tto_cfg) in checkpoint_map.items():
         if path and os.path.isfile(path):
@@ -447,39 +550,62 @@ def run_benchmark(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Benchmark FNO2d/3d/PI (pre+post TTO) vs CLEAN")
 
-    parser.add_argument("--fno2d",   type=str, default=None, help="Path checkpoint FNO2d")
-    parser.add_argument("--fno3d",   type=str, default=None, help="Path checkpoint FNO3d")
-    parser.add_argument("--pifno2d", type=str, default=None, help="Path checkpoint PI-FNO2d")
-    parser.add_argument("--pifno3d", type=str, default=None, help="Path checkpoint PI-FNO3d")
+    parser.add_argument("--fno2d",   type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/fno2d.pth", help="Path checkpoint FNO2d")
+    parser.add_argument("--fno3d",   type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/fno3d.pth", help="Path checkpoint FNO3d")
+    parser.add_argument("--pifno2d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pifno2d.pth", help="Path checkpoint PI-FNO2d")
+    parser.add_argument("--pifno3d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pifno3d.pth", help="Path checkpoint PI-FNO3d")
+    parser.add_argument("--lno2d",   type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/lno2d.pth", help="Path checkpoint LNO2d")
+    parser.add_argument("--lno3d",   type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/lno3d.pth", help="Path checkpoint LNO3d")
+    parser.add_argument("--pilno2d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pilno2d.pth", help="Path checkpoint PI-LNO2d")
+    parser.add_argument("--pilno3d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pilno3d.pth", help="Path checkpoint PI-LNO3d")
 
     # FNO2D
-    parser.add_argument("--modes_fno2d", type=int,   default=8)
-    parser.add_argument("--width_fno2d", type=int,   default=32)
+    parser.add_argument("--modes_fno2d", type=int,   default=24)
+    parser.add_argument("--width_fno2d", type=int,   default=256)
 
     # FNO3D
-    parser.add_argument("--modes_fno3d", type=int,   default=12)
-    parser.add_argument("--modes_z_fno3d", type=int, default=4)
+    parser.add_argument("--modes_fno3d", type=int,   default=16)
+    parser.add_argument("--modes_z_fno3d", type=int, default=12)
     parser.add_argument("--width_fno3d", type=int,   default=64)
   
 
     # PI-FNO2D
-    parser.add_argument("--modes_pifno2d", type=int,   default=8)
-    parser.add_argument("--width_pifno2d", type=int,   default=32)
+    parser.add_argument("--modes_pifno2d", type=int,   default=32)
+    parser.add_argument("--width_pifno2d", type=int,   default=256)
 
     # PI-FNO3D
     parser.add_argument("--modes_pifno3d", type=int,   default=8)
-    parser.add_argument("--modes_z_pifno3d", type=int, default=8)
-    parser.add_argument("--width_pifno3d", type=int,   default=16)
+    parser.add_argument("--modes_z_pifno3d", type=int, default=12)
+    parser.add_argument("--width_pifno3d", type=int,   default=32)
+
+    # LNO2D
+    parser.add_argument("--modes_lno2d", type=int,   default=12)
+    parser.add_argument("--width_lno2d", type=int,   default=256)
+
+    # LNO3D
+    parser.add_argument("--modes_lno3d", type=int,   default=16)
+    parser.add_argument("--modes_z_lno3d", type=int, default=12)
+    parser.add_argument("--width_lno3d", type=int,   default=32)
+
+    # PI-LNO2D
+    parser.add_argument("--modes_pilno2d", type=int,   default=8)
+    parser.add_argument("--width_pilno2d", type=int,   default=256)
+
+    # PI-LNO3D
+    parser.add_argument("--modes_pilno3d", type=int,   default=16)
+    parser.add_argument("--modes_z_pilno3d", type=int, default=12)
+    parser.add_argument("--width_pilno3d", type=int,   default=32)
 
 
     parser.add_argument("--fourier_layers", type=int,   default=4)
-    parser.add_argument("--channels",       type=int,   default=16)
+    parser.add_argument("--channels",       type=int,   default=64)
     parser.add_argument("--pad_ratio",      type=float, default=0.1)
     parser.add_argument("--act",            type=str,   default="gelu",
                         choices=["gelu", "relu", "tanh", "leaky_relu"])
 
     # Dataset
-    parser.add_argument("--dataset_path", type=str, default="dataset/simulations")
+    parser.add_argument("--dataset_path", type=str, default="/data1/rtessitore/almasim/alma_dataset/dataset",
+                        help="Path to the ALMA dataset")
 
     # TTO
     parser.add_argument("--tto_epochs_pifno2d", type=int,   default=10,
@@ -490,9 +616,17 @@ if __name__ == "__main__":
                         help="TTO epochs for PI-FNO3d")
     parser.add_argument("--tto_lr_pifno3d",     type=float, default=1e-7,
                         help="TTO learning rate for PI-FNO3d (Keep << lr training)")
+    parser.add_argument("--tto_epochs_pilno2d", type=int,   default=10,
+                        help="TTO epochs for PI-LNO2d")
+    parser.add_argument("--tto_lr_pilno2d",     type=float, default=5e-6,
+                        help="TTO learning rate for PI-LNO2d (Keep << lr training)")
+    parser.add_argument("--tto_epochs_pilno3d", type=int,   default=10,
+                        help="TTO epochs for PI-LNO3d")
+    parser.add_argument("--tto_lr_pilno3d",     type=float, default=1e-7,
+                        help="TTO learning rate for PI-LNO3d (Keep << lr training)")
 
     # Output
-    parser.add_argument("--output_dir", type=str, default="results_benchmark")
+    parser.add_argument("--output_dir", type=str, default="benchmark")
     parser.add_argument("--n_viz",      type=int, default=5,
                         help="Number of samples for which to save comparative plots")
 
