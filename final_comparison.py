@@ -227,7 +227,7 @@ def uv_to_psf(uv_mask):
 
     return psf
 
-def tto_optimize(model, dirty, uv_mask, device, channels, tto_epochs, tto_lr, is_3d):
+def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d):
     original_state = copy.deepcopy(model.state_dict())
 
     tto_criterion = CombinedLoss(
@@ -239,8 +239,7 @@ def tto_optimize(model, dirty, uv_mask, device, channels, tto_epochs, tto_lr, is
 
     tto_opt     = optim.Adam(model.parameters(), lr=tto_lr)
     dirty_dev   = dirty.to(device)
-    uv_mask_dev = uv_mask.to(device)
-    psf_dev     = uv_to_psf(uv_mask_dev).to(device)
+    psf_dev     = psf.to(device)
     placeholder = torch.zeros_like(dirty_dev)  
 
     model.train()
@@ -470,10 +469,13 @@ def run_benchmark(args):
     n_valid = {m: 0 for m in method_names}
     timer = Timer(device)
 
-    for sample_idx, (dirty, clean, psf) in enumerate(test_loader):
+    for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
+
+        uv_mask = uv_mask.to(device)
+        psf = uv_to_psf(uv_mask)
 
         predictions_for_plot = {}   
 
@@ -517,25 +519,25 @@ def run_benchmark(args):
                     predictions_for_plot[f"{name}+TTO"] = pred_tto.detach().cpu()
 
         # CLEAN
-        # timer.start()
-        # pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1)[0]
-        # t_clean = timer.stop()
+        timer.start()
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1)[0]
+        t_clean = timer.stop()
 
-        # m_clean = compute_metrics(pred_clean, clean_s, device)
-        # if m_clean:
-        #     m_clean["time_ms"] = t_clean
-        #     accumulate(acc["CLEAN"], m_clean)
-        #     n_valid["CLEAN"] += 1
+        m_clean = compute_metrics(pred_clean, clean_s, device)
+        if m_clean:
+            m_clean["time_ms"] = t_clean
+            accumulate(acc["CLEAN"], m_clean)
+            n_valid["CLEAN"] += 1
 
-        # if sample_idx < args.n_viz:
-        #     predictions_for_plot["CLEAN"] = pred_clean.detach().cpu()
-        #     save_comparison_plot(
-        #         sample_idx,
-        #         dirty_s,
-        #         clean_s,
-        #         predictions_for_plot,
-        #         output_dir=os.path.join(args.output_dir, "comparisons"),
-        #     )
+        if sample_idx < args.n_viz:
+            predictions_for_plot["CLEAN"] = pred_clean.detach().cpu()
+            save_comparison_plot(
+                sample_idx,
+                dirty_s,
+                clean_s,
+                predictions_for_plot,
+                output_dir=os.path.join(args.output_dir, "comparisons"),
+            )
 
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
