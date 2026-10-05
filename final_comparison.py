@@ -224,7 +224,7 @@ def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d)
 
     tto_criterion = CombinedLoss(
         lambda_data=0.0,
-        lambda_phys=1.0,
+        lambda_phys=1.0,  # TTO usa solo la fisica
         alpha=0.0,
         channels=channels,
     ).to(device)
@@ -238,18 +238,22 @@ def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d)
     for _ in range(tto_epochs):
         tto_opt.zero_grad()
 
+        # 1. PRED RAW: NON applicare il clamp qui!
         if is_3d:
-            pred = model(dirty_dev.unsqueeze(1)).squeeze(1)
+            raw_pred = model(dirty_dev.unsqueeze(1)).squeeze(1)
         else:
-            pred = model(dirty_dev)
+            raw_pred = model(dirty_dev)
 
-        loss, *_ = tto_criterion(pred, dirty_dev, placeholder, psf_dev)
+        # 2. CALCOLO DELLA LOSS sui dati grezzi, per non rompere il calcolo differenziale
+        loss, *_ = tto_criterion(raw_pred, dirty_dev, placeholder, psf_dev)
+        
         loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         tto_opt.step()
 
     model.eval()
     with torch.no_grad():
+        # 3. Solo per l'estrazione finale applichiamo il clamp per garantire la positività
         if is_3d:
             pred_tto = torch.clamp(model(dirty_dev.unsqueeze(1)).squeeze(1), min=0.0)
         else:
@@ -509,7 +513,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=10000)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1000)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
