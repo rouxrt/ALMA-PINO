@@ -438,7 +438,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     )
 
     ax_dirty.set_title(
-        "Dirty\n(Input)",
+        "Dirty (Input)",
         fontsize=8,
         fontweight="bold"
     )
@@ -462,7 +462,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     )
 
     ax_gt.set_title(
-        "Ground\nTruth",
+        "Ground Truth",
         fontsize=8,
         fontweight="bold"
     )
@@ -604,7 +604,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
             short = name.replace(
                 "+TTO",
-                "\n+ TTO"
+                " + TTO"
             )
 
             ax_p.set_title(
