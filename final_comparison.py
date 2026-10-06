@@ -4,6 +4,7 @@ import os
 import sys
 import time
 
+import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import numpy as np
