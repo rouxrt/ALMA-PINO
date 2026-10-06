@@ -395,8 +395,8 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     )
 
     gs = gridspec.GridSpec(
-        5,
         7,
+        5,
         figure=fig,
 
         width_ratios=[
