@@ -384,7 +384,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     #   CLEAN Res.  R1    R2    R3    R4    R5    R6
     # ============================================================
 
-    cell_w = 2.0
+    cell_w = 1.5
     cell_h = 2.0
 
     fig_w = cell_w * 8
@@ -404,7 +404,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         ],
 
         hspace=0.20,
-        wspace=0.005,
+        wspace=0.025,
 
         left=0.045,
         right=0.965,
@@ -1271,7 +1271,7 @@ if __name__ == "__main__":
     parser.add_argument("--lno3d",   type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/lno3d.pth", help="Path checkpoint LNO3d")
     parser.add_argument("--pilno2d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pilno2d.pth", help="Path checkpoint PI-LNO2d")
     parser.add_argument("--pilno3d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pilno3d.pth", help="Path checkpoint PI-LNO3d")
-    parser.add_argument("--n_iter_clean", type=int, default=250, help="Number of iterations for CLEAN")
+    parser.add_argument("--n_iter_clean", type=int, default=500, help="Number of iterations for CLEAN")
 
     # FNO2D
     parser.add_argument("--modes_fno2d", type=int,   default=24)
