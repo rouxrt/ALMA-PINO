@@ -491,7 +491,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         )
 
         ax_clean.set_title(
-            "CLEAN",
+            "CLEAN - Pred",
             fontsize=8,
             fontweight="bold"
         )
@@ -514,6 +514,12 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             vmax=global_res_lim
         )
 
+        ax_clean_res.set_title(
+                    "CLEAN - Res",
+                    fontsize=8,
+                    fontweight="bold"
+                )
+
         ax_clean_res.axis("off")
 
     else:
@@ -529,45 +535,45 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     # Row labels
     # ============================================================
 
-    fig.text(
-        0.008,
-        0.76,
-        "Prediction",
-        ha="left",
-        va="center",
-        fontsize=9,
-        fontweight="bold"
-    )
+    # fig.text(
+    #     0.008,
+    #     0.76,
+    #     "Prediction",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
 
-    fig.text(
-        0.008,
-        0.57,
-        "Residual",
-        ha="left",
-        va="center",
-        fontsize=9,
-        fontweight="bold"
-    )
+    # fig.text(
+    #     0.008,
+    #     0.57,
+    #     "Residual",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
 
-    fig.text(
-        0.008,
-        0.34,
-        "Prediction",
-        ha="left",
-        va="center",
-        fontsize=9,
-        fontweight="bold"
-    )
+    # fig.text(
+    #     0.008,
+    #     0.34,
+    #     "Prediction",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
 
-    fig.text(
-        0.008,
-        0.15,
-        "Residual",
-        ha="left",
-        va="center",
-        fontsize=9,
-        fontweight="bold"
-    )
+    # fig.text(
+    #     0.008,
+    #     0.15,
+    #     "Residual",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
 
     # ============================================================
     # Plot helper
@@ -608,7 +614,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             )
 
             ax_p.set_title(
-                short,
+                short + " - Pred",
                 fontsize=7.5,
                 fontweight="bold"
             )
@@ -634,6 +640,12 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             )
 
             ax_r.axis("off")
+
+            ax_r.set_title(
+                            short + " - Res",
+                            fontsize=7.5,
+                            fontweight="bold"
+                        )
 
             im_res_last = im_res
 
