@@ -404,7 +404,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         ],
 
         hspace=0.20,
-        wspace=0.015,
+        wspace=0.005,
 
         left=0.045,
         right=0.965,
