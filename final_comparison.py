@@ -279,7 +279,7 @@ def compute_metrics(pred, clean, device):
     pred_norm  = pred  / smax
     clean_norm = clean / smax
 
-    mask      = clean_norm > 1e-6
+    mask      = clean_norm > 0.01
     true_flux = clean_norm[mask].sum()
     pred_flux = pred_norm[mask].sum()
     flux_err  = torch.abs(pred_flux - true_flux) / (true_flux + 1e-8) * 100
@@ -300,13 +300,7 @@ def accumulate(acc, m):
 
 def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
                          max_methods_per_fig=7):
-    """
-    Layout orizzontale: 2 righe (Prediction | Residual) × N colonne (metodi).
-    - Prima colonna sempre: Dirty e GT sovrapposti in uno spazio doppio
-    - Colorbar condivisa per le predizioni (inferno)
-    - Colorbar condivisa per i residui (RdBu_r)
-    - Auto-split in più figure se i metodi sono troppi
-    """
+    
     os.makedirs(output_dir, exist_ok=True)
 
     d     = dirty.cpu().mean(dim=0).numpy()   # proiezione 2D media spettrale
@@ -473,8 +467,138 @@ def save_comparison_plot_2(sample_idx, dirty, clean, predictions, output_dir):
     plt.savefig(path, dpi=120, bbox_inches="tight")
     plt.close()
 
-
 def save_metrics_chart(all_metrics, output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Ordine esplicito
+    methods = list(all_metrics.keys())
+
+    # Nomi più leggibili
+    display_names = {
+        "FNO2d": "FNO 2D",
+        "FNO3d": "FNO 3D",
+        "PI-FNO2d": "PI-FNO 2D",
+        "PI-FNO2d+TTO": "PI-FNO 2D\n+ TTO",
+        "PI-FNO3d": "PI-FNO 3D",
+        "PI-FNO3d+TTO": "PI-FNO 3D\n+ TTO",
+        "LNO2d": "LNO 2D",
+        "LNO3d": "LNO 3D",
+        "PI-LNO2d": "PI-LNO 2D",
+        "PI-LNO2d+TTO": "PI-LNO 2D\n+ TTO",
+        "PI-LNO3d": "PI-LNO 3D",
+        "PI-LNO3d+TTO": "PI-LNO 3D\n+ TTO",
+        "CLEAN": "CLEAN",
+    }
+
+    labels = [display_names.get(m, m) for m in methods]
+
+    metric_info = [
+        ("flux",   "Flux Error (%) ↓"),
+        ("psnr",   "PSNR (dB) ↑"),
+        ("ssim",   "SSIM ↑"),
+        ("time_ms", "Time per Sample (ms) ↓"),
+    ]
+
+    fig, axes = plt.subplots(
+        2, 2,
+        figsize=(18, 11)
+    )
+
+    axes = axes.ravel()
+
+    x = np.arange(len(methods))
+    width = 0.65
+
+    for ax, (key, title) in zip(axes, metric_info):
+
+        means = np.array([
+            all_metrics[m][key]
+            for m in methods
+        ])
+
+        stds = np.array([
+            all_metrics[m][f"{key}_std"]
+            for m in methods
+        ])
+
+        bars = ax.bar(
+            x,
+            means,
+            width=width,
+            yerr=stds,
+            capsize=4,
+            alpha=0.85,
+            error_kw={
+                "elinewidth": 1.2,
+                "ecolor": "#444444"
+            }
+        )
+
+        # Valore medio sopra ogni barra
+        for bar, mean in zip(bars, means):
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                bar.get_height() + np.nanmax(stds) * 0.05,
+                f"{mean:.2f}",
+                ha="center",
+                va="bottom",
+                fontsize=9
+            )
+
+        ax.set_title(
+            title,
+            fontsize=12,
+            fontweight="bold"
+        )
+
+        ax.set_xticks(x)
+        ax.set_xticklabels(
+            labels,
+            rotation=35,
+            ha="right",
+            fontsize=9
+        )
+
+        ax.grid(
+            axis="y",
+            alpha=0.25,
+            linestyle="--"
+        )
+
+        ax.set_axisbelow(True)
+
+        # Parte da zero
+        ax.set_ylim(bottom=0)
+
+    # Il tempo ha una dinamica molto diversa:
+    # utile soprattutto quando CLEAN/TTO sono molto più lenti.
+    axes[3].set_yscale("log")
+
+    fig.suptitle(
+        "Benchmark Metrics",
+        fontsize=16,
+        fontweight="bold",
+        y=0.995
+    )
+
+    fig.tight_layout(rect=[0, 0, 1, 0.97])
+
+    path = os.path.join(
+        output_dir,
+        "metrics_summary.png"
+    )
+
+    plt.savefig(
+        path,
+        dpi=180,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(f"Metrics chart salvato in: {path}")
+
+def save_metrics_chart_2(all_metrics, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     methods = list(all_metrics.keys())
