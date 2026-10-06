@@ -391,10 +391,10 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
             im_res_last = im_res
 
         # ── Colorbar predizioni (colonna colorbar, riga 0) ──
-        # ax_cbar_pred = fig.add_subplot(gs[0, -1])
-        # cbar_pred = fig.colorbar(im_d, cax=ax_cbar_pred)
-        # cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
-        # cbar_pred.ax.tick_params(labelsize=6)
+        ax_cbar_pred = fig.add_subplot(gs[0, -1])
+        cbar_pred = fig.colorbar(im_d, cax=ax_cbar_pred)
+        cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
+        cbar_pred.ax.tick_params(labelsize=6)
 
         # ── Colorbar residui (colonna colorbar, riga 1) ──
         ax_cbar_res = fig.add_subplot(gs[1, -1])
@@ -660,8 +660,7 @@ def run_benchmark(args):
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
 
-        if sample_idx == 5:
-            break
+        
 
     avg_metrics = {}
     for m in method_names:
