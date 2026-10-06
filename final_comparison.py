@@ -280,7 +280,7 @@ def compute_metrics(pred, clean, device):
     pred_norm  = pred  / smax
     clean_norm = clean / smax
 
-    mask      = clean_norm > 1e-5
+    mask      = clean_norm > 0.01
     true_flux = clean_norm[mask].sum()
     pred_flux = pred_norm[mask].sum()
     flux_err  = torch.abs(pred_flux - true_flux) / (true_flux + 1e-8) * 100
@@ -300,6 +300,503 @@ def accumulate(acc, m):
         acc[k].append(m[k])
 
 def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
+
+    os.makedirs(output_dir, exist_ok=True)
+
+    # ============================================================
+    # 2D projections
+    # ============================================================
+
+    d = dirty.cpu().mean(dim=0).numpy()
+    c = clean.cpu().mean(dim=0).numpy()
+
+    c_max = c.max() if c.max() > 0 else 1.0
+
+    # ============================================================
+    # Predictions -> numpy
+    # ============================================================
+
+    all_preds = {
+        name: predictions[name].cpu().mean(dim=0).numpy()
+        for name in predictions
+    }
+
+    # ============================================================
+    # Separate FNO / LNO / CLEAN
+    # ============================================================
+
+    fno_methods = [
+        name for name in all_preds
+        if name.startswith("FNO") or name.startswith("PI-FNO")
+    ]
+
+    lno_methods = [
+        name for name in all_preds
+        if name.startswith("LNO") or name.startswith("PI-LNO")
+    ]
+
+    clean_method = "CLEAN" if "CLEAN" in all_preds else None
+
+    # Mantieni l'ordine originale
+    fno_methods = fno_methods[:6]
+    lno_methods = lno_methods[:6]
+
+    # ============================================================
+    # Global residual range
+    # ============================================================
+
+    all_res_values = np.concatenate([
+        np.abs(pred - c).ravel()
+        for pred in all_preds.values()
+    ])
+
+    global_res_lim = np.percentile(
+        all_res_values,
+        99.5
+    )
+
+    global_res_lim = max(
+        global_res_lim,
+        1e-9
+    )
+
+    # ============================================================
+    # Layout
+    #
+    # 4 rows:
+    #
+    #   row 0 = FNO predictions
+    #   row 1 = FNO residuals
+    #   row 2 = LNO predictions
+    #   row 3 = LNO residuals
+    #
+    # 8 columns:
+    #
+    #   col 0   = Dirty / GT / CLEAN / CLEAN residual
+    #   col 1-6 = six FNO/LNO methods
+    #   col 7   = colorbar
+    #
+    # Schema:
+    #
+    #   Dirty       FNO1  FNO2  FNO3  FNO4  FNO5  FNO6
+    #   GroundTruth R1    R2    R3    R4    R5    R6
+    #   CLEAN       LNO1  LNO2  LNO3  LNO4  LNO5  LNO6
+    #   CLEAN Res.  R1    R2    R3    R4    R5    R6
+    # ============================================================
+
+    cell_w = 1.5
+    cell_h = 2.0
+
+    fig_w = cell_w * 5
+    fig_h = cell_h * 7
+
+    fig = plt.figure(
+        figsize=(fig_w, fig_h)
+    )
+
+    gs = gridspec.GridSpec(
+        5,
+        7,
+        figure=fig,
+
+        width_ratios=[
+            1, 1, 1, 1, 0.07
+        ],
+
+        hspace=0.20,
+        wspace=0.025,
+
+        left=0.045,
+        right=0.965,
+        top=0.88,
+        bottom=0.05,
+    )
+
+    # ============================================================
+    # Column 0
+    #
+    # Dirty
+    # Ground Truth
+    # CLEAN
+    # CLEAN residual
+    # ============================================================
+
+    # ------------------------------------------------------------
+    # Dirty
+    # ------------------------------------------------------------
+
+    ax_dirty = fig.add_subplot(
+        gs[0, 0]
+    )
+
+    ax_dirty.imshow(
+        d,
+        origin="lower",
+        cmap="inferno",
+        vmin=d.min(),
+        vmax=d.max()
+    )
+
+    ax_dirty.set_title(
+        "Dirty (Input)",
+        fontsize=8,
+        fontweight="bold"
+    )
+
+    ax_dirty.axis("off")
+
+    # ------------------------------------------------------------
+    # Ground Truth
+    # ------------------------------------------------------------
+
+    ax_gt = fig.add_subplot(
+        gs[0, 1]
+    )
+
+    ax_gt.imshow(
+        c,
+        origin="lower",
+        cmap="inferno",
+        vmin=0,
+        vmax=c_max
+    )
+
+    ax_gt.set_title(
+        "Ground Truth",
+        fontsize=8,
+        fontweight="bold"
+    )
+
+    ax_gt.axis("off")
+
+    # ------------------------------------------------------------
+    # CLEAN
+    # ------------------------------------------------------------
+
+    if clean_method is not None:
+
+        clean_pred = all_preds[clean_method]
+        clean_res = clean_pred - c
+
+        ax_clean = fig.add_subplot(
+            gs[0, 2]
+        )
+
+        ax_clean.imshow(
+            clean_pred,
+            origin="lower",
+            cmap="inferno",
+            vmin=0,
+            vmax=c_max
+        )
+
+        ax_clean.set_title(
+            "CLEAN - Pred",
+            fontsize=8,
+            fontweight="bold"
+        )
+
+        ax_clean.axis("off")
+
+        # --------------------------------------------------------
+        # CLEAN residual
+        # --------------------------------------------------------
+
+        ax_clean_res = fig.add_subplot(
+            gs[0, 3]
+        )
+
+        ax_clean_res.imshow(
+            clean_res,
+            origin="lower",
+            cmap="RdBu_r",
+            vmin=-global_res_lim,
+            vmax=global_res_lim
+        )
+
+        ax_clean_res.set_title(
+                    "CLEAN - Res",
+                    fontsize=8,
+                    fontweight="bold"
+                )
+
+        ax_clean_res.axis("off")
+
+    else:
+
+        # Se CLEAN non esiste, lascia vuote le due celle
+        ax = fig.add_subplot(gs[0, 2])
+        ax.axis("off")
+
+        ax = fig.add_subplot(gs[0, 3])
+        ax.axis("off")
+
+    # ============================================================
+    # Row labels
+    # ============================================================
+
+    # fig.text(
+    #     0.008,
+    #     0.76,
+    #     "Prediction",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
+
+    # fig.text(
+    #     0.008,
+    #     0.57,
+    #     "Residual",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
+
+    # fig.text(
+    #     0.008,
+    #     0.34,
+    #     "Prediction",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
+
+    # fig.text(
+    #     0.008,
+    #     0.15,
+    #     "Residual",
+    #     ha="left",
+    #     va="center",
+    #     fontsize=9,
+    #     fontweight="bold"
+    # )
+
+    # ============================================================
+    # Plot helper
+    # ============================================================
+
+    im_pred_last = None
+    im_res_last = None
+
+    def plot_group(methods, pred_col, res_col):
+
+        nonlocal im_pred_last
+        nonlocal im_res_last
+
+        for row, name in enumerate(methods, start=1):
+
+            pred_np = all_preds[name]
+            res_np = pred_np - c
+
+            # ----------------------------------------------------
+            # Prediction
+            # ----------------------------------------------------
+
+            ax_p = fig.add_subplot(
+                gs[pred_col, row]
+            )
+
+            im_pred = ax_p.imshow(
+                pred_np,
+                origin="lower",
+                cmap="inferno",
+                vmin=0,
+                vmax=c_max
+            )
+
+            short = name.replace(
+                "+TTO",
+                " + TTO"
+            )
+
+            ax_p.set_title(
+                short + " - Pred",
+                fontsize=7.5,
+                fontweight="bold"
+            )
+
+            ax_p.axis("off")
+
+            im_pred_last = im_pred
+
+            # ----------------------------------------------------
+            # Residual
+            # ----------------------------------------------------
+
+            ax_r = fig.add_subplot(
+                gs[res_col, row]
+            )
+
+            im_res = ax_r.imshow(
+                res_np,
+                origin="lower",
+                cmap="RdBu_r",
+                vmin=-global_res_lim,
+                vmax=global_res_lim
+            )
+
+            ax_r.axis("off")
+
+            ax_r.set_title(
+                            short + " - Res",
+                            fontsize=7.5,
+                            fontweight="bold"
+                        )
+
+            im_res_last = im_res
+
+    # ============================================================
+    # FNO methods
+    # ============================================================
+
+    plot_group(
+        fno_methods,
+        pred_col=0,
+        res_col=1
+    )
+
+    # ============================================================
+    # LNO methods
+    # ============================================================
+
+    plot_group(
+        lno_methods,
+        pred_col=2,
+        res_col=3
+    )
+
+    # ============================================================
+    # Colorbars
+    # ============================================================
+
+    # ------------------------------------------------------------
+    # Prediction colorbar
+    # ------------------------------------------------------------
+
+    if im_pred_last is not None:
+
+        pos_pred = fig.add_axes([
+            0.972,
+            0.51,
+            0.012,
+            0.34
+        ])
+
+        cbar_pred = fig.colorbar(
+            im_pred_last,
+            cax=pos_pred
+        )
+
+        cbar_pred.set_label(
+            "Flux [Jy/px²]",
+            fontsize=8
+        )
+
+        cbar_pred.ax.tick_params(
+            labelsize=7
+        )
+
+    # ------------------------------------------------------------
+    # Residual colorbar
+    # ------------------------------------------------------------
+
+    if im_res_last is not None:
+
+        pos_res = fig.add_axes([
+            0.972,
+            0.10,
+            0.012,
+            0.34
+        ])
+
+        cbar_res = fig.colorbar(
+            im_res_last,
+            cax=pos_res
+        )
+
+        cbar_res.set_label(
+            "Pred − GT",
+            fontsize=8
+        )
+
+        cbar_res.ax.tick_params(
+            labelsize=7
+        )
+
+    # ============================================================
+    # Separator between input/CLEAN and neural methods
+    # ============================================================
+
+    fig.text(
+        0.145,
+        0.50,
+        "",
+        va="center"
+    )
+
+    # # ============================================================
+    # # Section labels
+    # # ============================================================
+
+    # fig.text(
+    #     0.49,
+    #     0.94,
+    #     ha="center",
+    #     va="center",
+    #     fontsize=11,
+    #     fontweight="bold"
+    # )
+
+    # fig.text(
+    #     0.49,
+    #     0.48,
+    #     ha="center",
+    #     va="center",
+    #     fontsize=11,
+    #     fontweight="bold"
+    # )
+
+    # ============================================================
+    # Title
+    # ============================================================
+
+    plt.suptitle(
+        f"Methods Comparison — Sample {sample_idx}",
+        fontsize=13,
+        fontweight="bold",
+        y=0.975
+    )
+
+    # ============================================================
+    # Save
+    # ============================================================
+
+    fname = (
+        f"comparison_sample_{sample_idx:03d}.png"
+    )
+
+    path = os.path.join(
+        output_dir,
+        fname
+    )
+
+    plt.savefig(
+        path,
+        dpi=180,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(
+        f"  → Saved: {path}"
+    )
+
+def save_comparison_plot_1(sample_idx, dirty, clean, predictions, output_dir):
 
     os.makedirs(output_dir, exist_ok=True)
 
