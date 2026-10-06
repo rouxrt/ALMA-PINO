@@ -719,12 +719,12 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     # Separator between input/CLEAN and neural methods
     # ============================================================
 
-    # fig.text(
-    #     0.145,
-    #     0.50,
-    #     "",
-    #     va="center"
-    # )
+    fig.text(
+        0.145,
+        0.50,
+        "",
+        va="center"
+    )
 
     # # ============================================================
     # # Section labels
