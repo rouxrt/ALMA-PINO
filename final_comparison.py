@@ -404,7 +404,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         ],
 
         hspace=0.20,
-        wspace=0.025,
+        wspace=0.015,
 
         left=0.045,
         right=0.965,
@@ -1219,7 +1219,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=250)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=args.n_iter_clean)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
@@ -1241,7 +1241,8 @@ def run_benchmark(args):
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
 
-
+        if sample_idx == 10:
+            break
 
     avg_metrics = {}
     for m in method_names:
@@ -1270,6 +1271,7 @@ if __name__ == "__main__":
     parser.add_argument("--lno3d",   type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/lno3d.pth", help="Path checkpoint LNO3d")
     parser.add_argument("--pilno2d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pilno2d.pth", help="Path checkpoint PI-LNO2d")
     parser.add_argument("--pilno3d", type=str, default="/data1/rtessitore/ALMA-PINO/checkpoints/pilno3d.pth", help="Path checkpoint PI-LNO3d")
+    parser.add_argument("--n_iter_clean", type=int, default=250, help="Number of iterations for CLEAN")
 
     # FNO2D
     parser.add_argument("--modes_fno2d", type=int,   default=24)
