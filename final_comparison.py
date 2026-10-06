@@ -1219,7 +1219,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=500)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=250)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
@@ -1241,8 +1241,7 @@ def run_benchmark(args):
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
 
-        if sample_idx == 4:
-            break
+
 
     avg_metrics = {}
     for m in method_names:
@@ -1339,7 +1338,7 @@ if __name__ == "__main__":
                         help="TTO learning rate for PI-LNO3d (Keep << lr training)")
 
     # Output
-    parser.add_argument("--output_dir", type=str, default="benchmark")
+    parser.add_argument("--output_dir", type=str, default="final_benchmark")
     parser.add_argument("--n_viz",      type=int, default=5,
                         help="Number of samples for which to save comparative plots")
 
