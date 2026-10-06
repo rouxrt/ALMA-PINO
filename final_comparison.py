@@ -470,10 +470,8 @@ def save_comparison_plot_2(sample_idx, dirty, clean, predictions, output_dir):
 def save_metrics_chart(all_metrics, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
-    # Ordine esplicito
     methods = list(all_metrics.keys())
 
-    # Nomi più leggibili
     display_names = {
         "FNO2d": "FNO 2D",
         "FNO3d": "FNO 3D",
@@ -493,10 +491,10 @@ def save_metrics_chart(all_metrics, output_dir):
     labels = [display_names.get(m, m) for m in methods]
 
     metric_info = [
-        ("flux",   "Flux Error (%) ↓"),
-        ("psnr",   "PSNR (dB) ↑"),
-        ("ssim",   "SSIM ↑"),
-        ("time_ms", "Time per Sample (ms) ↓"),
+        ("flux",    "Flux Error (%) ↓",       "#E07B54"),
+        ("psnr",    "PSNR (dB) ↑",             "#4E9AB3"),
+        ("ssim",    "SSIM ↑",                  "#6ABF7B"),
+        ("time_ms", "Time per Sample (ms) ↓",  "#B07CC6"),
     ]
 
     fig, axes = plt.subplots(
@@ -509,7 +507,7 @@ def save_metrics_chart(all_metrics, output_dir):
     x = np.arange(len(methods))
     width = 0.65
 
-    for ax, (key, title) in zip(axes, metric_info):
+    for ax, (key, title, color) in zip(axes, metric_info):
 
         means = np.array([
             all_metrics[m][key]
@@ -525,24 +523,36 @@ def save_metrics_chart(all_metrics, output_dir):
             x,
             means,
             width=width,
+            color=color,
+            alpha=0.85,
             yerr=stds,
             capsize=4,
-            alpha=0.85,
             error_kw={
                 "elinewidth": 1.2,
                 "ecolor": "#444444"
             }
         )
 
+        # -----------------------------------------
         # Valore medio sopra ogni barra
-        for bar, mean in zip(bars, means):
+        # -----------------------------------------
+        for bar, mean, std in zip(bars, means, stds):
+
+            # Spazio proporzionale alla grandezza della metrica
+            offset = max(
+                np.nanmax(means) * 0.015,
+                np.nanmax(stds) * 0.05,
+                1e-6
+            )
+
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
-                bar.get_height() + np.nanmax(stds) * 0.05,
+                mean + std + offset,
                 f"{mean:.2f}",
                 ha="center",
                 va="bottom",
-                fontsize=9
+                fontsize=9,
+                fontweight="normal"
             )
 
         ax.set_title(
@@ -567,12 +577,39 @@ def save_metrics_chart(all_metrics, output_dir):
 
         ax.set_axisbelow(True)
 
-        # Parte da zero
         ax.set_ylim(bottom=0)
 
-    # Il tempo ha una dinamica molto diversa:
-    # utile soprattutto quando CLEAN/TTO sono molto più lenti.
-    axes[3].set_yscale("log")
+        # -----------------------------------------
+        # TIME: scala logaritmica
+        # -----------------------------------------
+        if key == "time_ms":
+
+            ax.set_yscale("log")
+
+            # Lascia spazio sopra CLEAN
+            ymax = np.nanmax(means + stds)
+
+            ax.set_ylim(
+                bottom=max(
+                    np.nanmin(means[means > 0]) * 0.7,
+                    1e-1
+                ),
+                top=ymax * 2.0
+            )
+
+            # Tick leggibili
+            ax.yaxis.set_major_locator(
+                matplotlib.ticker.LogLocator(
+                    base=10,
+                    numticks=8
+                )
+            )
+
+            ax.yaxis.set_major_formatter(
+                matplotlib.ticker.FuncFormatter(
+                    lambda y, _: f"{y:g}"
+                )
+            )
 
     fig.suptitle(
         "Benchmark Metrics",
