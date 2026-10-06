@@ -299,125 +299,408 @@ def accumulate(acc, m):
     for k in acc:
         acc[k].append(m[k])
 
-def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
-                         max_methods_per_fig=7):
-    
+def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
+
     os.makedirs(output_dir, exist_ok=True)
 
-    d     = dirty.cpu().mean(dim=0).numpy()   # proiezione 2D media spettrale
-    c     = clean.cpu().mean(dim=0).numpy()
+    # ============================================================
+    # 2D projections
+    # ============================================================
+
+    d = dirty.cpu().mean(dim=0).numpy()
+    c = clean.cpu().mean(dim=0).numpy()
+
     c_max = c.max() if c.max() > 0 else 1.0
 
-    # Calcola il range simmetrico globale dei residui su TUTTI i metodi
-    # → colorbars confrontabili tra figure diverse
-    all_preds = {name: predictions[name].cpu().mean(dim=0).numpy()
-                 for name in predictions}
+    # ============================================================
+    # Convert predictions to numpy
+    # ============================================================
+
+    all_preds = {
+        name: predictions[name].cpu().mean(dim=0).numpy()
+        for name in predictions
+    }
+
+    # ============================================================
+    # Separate FNO and LNO methods
+    # ============================================================
+
+    fno_methods = [
+        name for name in all_preds
+        if name.startswith("FNO") or name.startswith("PI-FNO")
+    ]
+
+    lno_methods = [
+        name for name in all_preds
+        if name.startswith("LNO") or name.startswith("PI-LNO")
+    ]
+
+    # Mantieni massimo 6 per gruppo
+    fno_methods = fno_methods[:6]
+    lno_methods = lno_methods[:6]
+
+    # ============================================================
+    # Residual global range
+    # ============================================================
+
     all_res_values = np.concatenate([
-    np.abs(p - c).ravel()
-    for p in all_preds.values()
+        np.abs(all_preds[name] - c).ravel()
+        for name in all_preds
     ])
 
     global_res_lim = np.percentile(
-    all_res_values,
-    99.5
+        all_res_values,
+        99.5
     )
 
     global_res_lim = max(global_res_lim, 1e-9)
 
-    methods = list(predictions.keys())
+    # ============================================================
+    # Figure
+    #
+    # 4 rows:
+    #   0 = FNO predictions
+    #   1 = FNO residuals
+    #   2 = LNO predictions
+    #   3 = LNO residuals
+    #
+    # 8 columns:
+    #   0 = Dirty / GT
+    #   1-6 = methods
+    #   7 = colorbar
+    # ============================================================
 
-    # ── Split automatico in chunk da max_methods_per_fig ──
-    chunks = [methods[i:i + max_methods_per_fig]
-              for i in range(0, len(methods), max_methods_per_fig)]
+    cell_w = 2.2
+    cell_h = 2.2
 
-    for chunk_idx, chunk in enumerate(chunks):
-        n_cols = len(chunk) + 1   # +1 per Dirty/GT nella prima colonna
+    fig_w = cell_w * 8
+    fig_h = cell_h * 4
 
-        # figsize: larghezza proporzionale al numero di colonne
-        cell_w, cell_h = 2.2, 2.4
-        fig_w = cell_w * n_cols + 0.8   # 0.8 per le colorbars
-        fig_h = cell_h * 2 + 0.6       # 2 righe + titoli
+    fig = plt.figure(
+        figsize=(fig_w, fig_h)
+    )
 
-        fig = plt.figure(figsize=(fig_w, fig_h))
+    gs = gridspec.GridSpec(
+        4,
+        8,
+        figure=fig,
 
-        # GridSpec: 2 righe × (1 + n_metodi + 1) — ultima colonna per colorbar
-        gs = gridspec.GridSpec(
-            2, n_cols + 1,
-            figure=fig,
-            width_ratios=[1.0] * n_cols + [0.05],   # ultima colonna stretta = colorbar
-            hspace=0.35, wspace=0.08,
-            left=0.03, right=0.97, top=0.88, bottom=0.05,
-        )
+        # Ultima colonna stretta per colorbar
+        width_ratios=[
+            1, 1, 1, 1, 1, 1, 1, 0.07
+        ],
 
-        # ── Colonna 0: Dirty (riga 0) e GT (riga 1) ──
-        ax_dirty = fig.add_subplot(gs[0, 0])
-        im_d = ax_dirty.imshow(d, origin="lower", cmap="inferno",
-                               vmin=d.min(), vmax=d.max())
-        ax_dirty.set_title("Dirty\n(Input)", fontsize=8, fontweight="bold")
-        ax_dirty.axis("off")
+        hspace=0.28,
+        wspace=0.08,
 
-        ax_gt = fig.add_subplot(gs[1, 0])
-        ax_gt.imshow(c, origin="lower", cmap="inferno", vmin=0, vmax=c_max)
-        ax_gt.set_title("Ground\nTruth", fontsize=8, fontweight="bold")
-        ax_gt.axis("off")
+        left=0.035,
+        right=0.975,
+        top=0.91,
+        bottom=0.05,
+    )
 
-        # ── Etichette riga ──
-        ax_dirty.text(-0.05, 0.5, "Prediction", va="center", ha="right",
-                      fontsize=8, fontweight="bold", color="#444",
-                      transform=ax_dirty.transAxes, rotation=90)
-        ax_gt.text(-0.05, 0.5, "Residual", va="center", ha="right",
-                   fontsize=8, fontweight="bold", color="#444",
-                   transform=ax_gt.transAxes, rotation=90)
+    # ============================================================
+    # Column 0 — Dirty / Ground Truth
+    # ============================================================
 
-        im_res_last = None   # per la colorbar dei residui
+    ax_dirty = fig.add_subplot(gs[0, 0])
 
-        for col, name in enumerate(chunk, start=1):
+    ax_dirty.imshow(
+        d,
+        origin="lower",
+        cmap="inferno",
+        vmin=d.min(),
+        vmax=d.max()
+    )
+
+    ax_dirty.set_title(
+        "Dirty\n(Input)",
+        fontsize=8,
+        fontweight="bold"
+    )
+
+    ax_dirty.axis("off")
+
+    # Row label
+    ax_dirty.text(
+        -0.08,
+        0.5,
+        "FNO",
+        va="center",
+        ha="right",
+        fontsize=10,
+        fontweight="bold",
+        transform=ax_dirty.transAxes,
+        rotation=90
+    )
+
+    # ============================================================
+
+    ax_gt = fig.add_subplot(gs[1, 0])
+
+    ax_gt.imshow(
+        c,
+        origin="lower",
+        cmap="inferno",
+        vmin=0,
+        vmax=c_max
+    )
+
+    ax_gt.set_title(
+        "Ground\nTruth",
+        fontsize=8,
+        fontweight="bold"
+    )
+
+    ax_gt.axis("off")
+
+    ax_gt.text(
+        -0.08,
+        0.5,
+        "Residual",
+        va="center",
+        ha="right",
+        fontsize=8,
+        fontweight="bold",
+        transform=ax_gt.transAxes,
+        rotation=90
+    )
+
+    # ============================================================
+    # LNO section — first column
+    # ============================================================
+
+    ax_lno_label = fig.add_subplot(gs[2, 0])
+
+    ax_lno_label.text(
+        0.5,
+        0.5,
+        "LNO",
+        ha="center",
+        va="center",
+        fontsize=10,
+        fontweight="bold",
+        transform=ax_lno_label.transAxes
+    )
+
+    ax_lno_label.axis("off")
+
+    ax_lno_res_label = fig.add_subplot(gs[3, 0])
+
+    ax_lno_res_label.text(
+        0.5,
+        0.5,
+        "Residual",
+        ha="center",
+        va="center",
+        fontsize=8,
+        fontweight="bold",
+        transform=ax_lno_res_label.transAxes
+    )
+
+    ax_lno_res_label.axis("off")
+
+    # ============================================================
+    # Method plotting helper
+    # ============================================================
+
+    im_pred_last = None
+    im_res_last = None
+
+    def plot_method_group(methods, pred_row, res_row):
+
+        nonlocal im_pred_last
+        nonlocal im_res_last
+
+        for col, name in enumerate(methods, start=1):
+
             pred_np = all_preds[name]
-            res_np  = pred_np - c
+            res_np = pred_np - c
 
-            # Riga 0 — predizione
-            ax_p = fig.add_subplot(gs[0, col])
-            img_pred = ax_p.imshow(pred_np, origin="lower", cmap="inferno",
-                        vmin=0, vmax=c_max)
-            # Abbrevia nomi lunghi per leggibilità
-            short = name.replace("+TTO", "\n+TTO")
-            ax_p.set_title(short, fontsize=7.5, fontweight="bold")
+            # ----------------------------------------------------
+            # Prediction
+            # ----------------------------------------------------
+
+            ax_p = fig.add_subplot(
+                gs[pred_row, col]
+            )
+
+            im_pred = ax_p.imshow(
+                pred_np,
+                origin="lower",
+                cmap="inferno",
+                vmin=0,
+                vmax=c_max
+            )
+
+            short = name.replace(
+                "+TTO",
+                "\n+ TTO"
+            )
+
+            ax_p.set_title(
+                short,
+                fontsize=7.5,
+                fontweight="bold"
+            )
+
             ax_p.axis("off")
 
-            # Riga 1 — residuo (range globale condiviso)
-            ax_r = fig.add_subplot(gs[1, col])
-            im_res = ax_r.imshow(res_np, origin="lower", cmap="RdBu_r",
-                                 vmin=-global_res_lim, vmax=global_res_lim)
+            im_pred_last = im_pred
+
+            # ----------------------------------------------------
+            # Residual
+            # ----------------------------------------------------
+
+            ax_r = fig.add_subplot(
+                gs[res_row, col]
+            )
+
+            im_res = ax_r.imshow(
+                res_np,
+                origin="lower",
+                cmap="RdBu_r",
+                vmin=-global_res_lim,
+                vmax=global_res_lim
+            )
+
             ax_r.axis("off")
+
             im_res_last = im_res
 
-        # ── Colorbar predizioni (colonna colorbar, riga 0) ──
-        ax_cbar_pred = fig.add_subplot(gs[0, -1])
-        cbar_pred = fig.colorbar(img_pred, cax=ax_cbar_pred)
-        cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
-        cbar_pred.ax.tick_params(labelsize=6)
+    # ============================================================
+    # FNO
+    # ============================================================
 
-        # ── Colorbar residui (colonna colorbar, riga 1) ──
-        ax_cbar_res = fig.add_subplot(gs[1, -1])
-        if im_res_last is not None:
-            cbar_res = fig.colorbar(im_res_last, cax=ax_cbar_res)
-            cbar_res.set_label("Pred − GT", fontsize=6)
-            cbar_res.ax.tick_params(labelsize=6)
+    plot_method_group(
+        fno_methods,
+        pred_row=0,
+        res_row=1
+    )
 
-        # ── Titolo ──
-        suffix = f" (part {chunk_idx + 1}/{len(chunks)})" if len(chunks) > 1 else ""
-        plt.suptitle(
-            f"Methods Comparison — Sample {sample_idx}{suffix}",
-            fontsize=10, fontweight="bold", y=0.97
-        )
+    # ============================================================
+    # LNO
+    # ============================================================
 
-        fname = (f"comparison_sample_{sample_idx:03d}_part{chunk_idx + 1}.png"
-                 if len(chunks) > 1
-                 else f"comparison_sample_{sample_idx:03d}.png")
-        path = os.path.join(output_dir, fname)
-        plt.savefig(path, dpi=150, bbox_inches="tight")
-        plt.close()
-        print(f"  → Saved: {path}")
+    plot_method_group(
+        lno_methods,
+        pred_row=2,
+        res_row=3
+    )
+
+    # ============================================================
+    # Row labels for LNO
+    # ============================================================
+
+    # Prediction label on LNO row
+    fig.text(
+        0.005,
+        0.30,
+        "Prediction",
+        va="center",
+        ha="left",
+        fontsize=8,
+        fontweight="bold",
+        rotation=90
+    )
+
+    # ============================================================
+    # Colorbar — predictions
+    #
+    # Span both prediction rows
+    # ============================================================
+
+    ax_cbar_pred = fig.add_subplot(
+        gs[[0, 2], -1]
+    )
+
+    cbar_pred = fig.colorbar(
+        im_pred_last,
+        cax=ax_cbar_pred
+    )
+
+    cbar_pred.set_label(
+        "Flux [Jy/px²]",
+        fontsize=8
+    )
+
+    cbar_pred.ax.tick_params(
+        labelsize=7
+    )
+
+    # ============================================================
+    # Colorbar — residuals
+    #
+    # Span both residual rows
+    # ============================================================
+
+    ax_cbar_res = fig.add_subplot(
+        gs[[1, 3], -1]
+    )
+
+    cbar_res = fig.colorbar(
+        im_res_last,
+        cax=ax_cbar_res
+    )
+
+    cbar_res.set_label(
+        "Pred − GT",
+        fontsize=8
+    )
+
+    cbar_res.ax.tick_params(
+        labelsize=7
+    )
+
+    # ============================================================
+    # Horizontal separator between FNO and LNO
+    # ============================================================
+
+    fig.text(
+        0.5,
+        0.505,
+        "LNO methods",
+        ha="center",
+        va="center",
+        fontsize=10,
+        fontweight="bold"
+    )
+
+    # ============================================================
+    # Title
+    # ============================================================
+
+    plt.suptitle(
+        f"Methods Comparison — Sample {sample_idx}",
+        fontsize=13,
+        fontweight="bold",
+        y=0.965
+    )
+
+    # ============================================================
+    # Save
+    # ============================================================
+
+    fname = (
+        f"comparison_sample_{sample_idx:03d}.png"
+    )
+
+    path = os.path.join(
+        output_dir,
+        fname
+    )
+
+    plt.savefig(
+        path,
+        dpi=180,
+        bbox_inches="tight"
+    )
+
+    plt.close()
+
+    print(
+        f"  → Saved: {path}"
+    )
 
 def save_comparison_plot_2(sample_idx, dirty, clean, predictions, output_dir):
     os.makedirs(output_dir, exist_ok=True)
@@ -546,10 +829,17 @@ def save_metrics_chart(all_metrics, output_dir):
                 1e-6
             )
 
+            if key == "time_ms":
+                value_text = f"{mean:.0f}"
+            elif key == "ssim":
+                value_text = f"{mean:.3f}"
+            else:
+                value_text = f"{mean:.2f}"
+
             ax.text(
                 bar.get_x() + bar.get_width() / 2,
                 mean + std + offset,
-                f"{mean:.2f}",
+                value_text,
                 ha="center",
                 va="bottom",
                 fontsize=9,
