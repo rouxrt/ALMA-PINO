@@ -313,7 +313,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     c_max = c.max() if c.max() > 0 else 1.0
 
     # ============================================================
-    # Convert predictions to numpy
+    # Predictions -> numpy
     # ============================================================
 
     all_preds = {
@@ -322,7 +322,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     }
 
     # ============================================================
-    # Separate FNO and LNO methods
+    # Separate FNO / LNO / CLEAN
     # ============================================================
 
     fno_methods = [
@@ -335,17 +335,19 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         if name.startswith("LNO") or name.startswith("PI-LNO")
     ]
 
-    # Mantieni massimo 6 per gruppo
+    clean_method = "CLEAN" if "CLEAN" in all_preds else None
+
+    # Mantieni l'ordine originale
     fno_methods = fno_methods[:6]
     lno_methods = lno_methods[:6]
 
     # ============================================================
-    # Residual global range
+    # Global residual range
     # ============================================================
 
     all_res_values = np.concatenate([
-        np.abs(all_preds[name] - c).ravel()
-        for name in all_preds
+        np.abs(pred - c).ravel()
+        for pred in all_preds.values()
     ])
 
     global_res_lim = np.percentile(
@@ -353,27 +355,33 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         99.5
     )
 
-    global_res_lim = max(global_res_lim, 1e-9)
+    global_res_lim = max(
+        global_res_lim,
+        1e-9
+    )
 
     # ============================================================
-    # Figure
+    # Layout
     #
     # 4 rows:
-    #   0 = FNO predictions
-    #   1 = FNO residuals
-    #   2 = LNO predictions
-    #   3 = LNO residuals
     #
-    # 8 columns:
-    #   0 = Dirty / GT
-    #   1-6 = methods
-    #   7 = colorbar
+    #   row 0 = FNO predictions
+    #   row 1 = FNO residuals
+    #   row 2 = LNO predictions
+    #   row 3 = LNO residuals
+    #
+    # 9 columns:
+    #
+    #   col 0 = Dirty / GT
+    #   col 1-6 = six FNO/LNO methods
+    #   col 7 = CLEAN
+    #   col 8 = colorbar
     # ============================================================
 
     cell_w = 2.2
     cell_h = 2.2
 
-    fig_w = cell_w * 8
+    fig_w = cell_w * 9
     fig_h = cell_h * 4
 
     fig = plt.figure(
@@ -382,12 +390,11 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
     gs = gridspec.GridSpec(
         4,
-        8,
+        9,
         figure=fig,
 
-        # Ultima colonna stretta per colorbar
         width_ratios=[
-            1, 1, 1, 1, 1, 1, 1, 0.07
+            1, 1, 1, 1, 1, 1, 1, 1, 0.07
         ],
 
         hspace=0.28,
@@ -395,12 +402,12 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
         left=0.035,
         right=0.975,
-        top=0.91,
+        top=0.88,
         bottom=0.05,
     )
 
     # ============================================================
-    # Column 0 — Dirty / Ground Truth
+    # Column 0: Dirty / Ground Truth
     # ============================================================
 
     ax_dirty = fig.add_subplot(gs[0, 0])
@@ -421,21 +428,6 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
     ax_dirty.axis("off")
 
-    # Row label
-    ax_dirty.text(
-        -0.08,
-        0.5,
-        "FNO",
-        va="center",
-        ha="right",
-        fontsize=10,
-        fontweight="bold",
-        transform=ax_dirty.transAxes,
-        rotation=90
-    )
-
-    # ============================================================
-
     ax_gt = fig.add_subplot(gs[1, 0])
 
     ax_gt.imshow(
@@ -454,60 +446,65 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
     ax_gt.axis("off")
 
-    ax_gt.text(
-        -0.08,
-        0.5,
-        "Residual",
+    # Empty cells for LNO rows
+    ax = fig.add_subplot(gs[2, 0])
+    ax.axis("off")
+
+    ax = fig.add_subplot(gs[3, 0])
+    ax.axis("off")
+
+    # ============================================================
+    # Row labels
+    # ============================================================
+
+    fig.text(
+        0.008,
+        0.76,
+        "FNO\nPrediction",
+        ha="left",
         va="center",
-        ha="right",
-        fontsize=8,
-        fontweight="bold",
-        transform=ax_gt.transAxes,
-        rotation=90
+        fontsize=9,
+        fontweight="bold"
+    )
+
+    fig.text(
+        0.008,
+        0.57,
+        "FNO\nResidual",
+        ha="left",
+        va="center",
+        fontsize=9,
+        fontweight="bold"
+    )
+
+    fig.text(
+        0.008,
+        0.34,
+        "LNO\nPrediction",
+        ha="left",
+        va="center",
+        fontsize=9,
+        fontweight="bold"
+    )
+
+    fig.text(
+        0.008,
+        0.15,
+        "LNO\nResidual",
+        ha="left",
+        va="center",
+        fontsize=9,
+        fontweight="bold"
     )
 
     # ============================================================
-    # LNO section — first column
-    # ============================================================
-
-    ax_lno_label = fig.add_subplot(gs[2, 0])
-
-    ax_lno_label.text(
-        0.5,
-        0.5,
-        "LNO",
-        ha="center",
-        va="center",
-        fontsize=10,
-        fontweight="bold",
-        transform=ax_lno_label.transAxes
-    )
-
-    ax_lno_label.axis("off")
-
-    ax_lno_res_label = fig.add_subplot(gs[3, 0])
-
-    ax_lno_res_label.text(
-        0.5,
-        0.5,
-        "Residual",
-        ha="center",
-        va="center",
-        fontsize=8,
-        fontweight="bold",
-        transform=ax_lno_res_label.transAxes
-    )
-
-    ax_lno_res_label.axis("off")
-
-    # ============================================================
-    # Method plotting helper
+    # Plot helper
     # ============================================================
 
     im_pred_last = None
     im_res_last = None
 
-    def plot_method_group(methods, pred_row, res_row):
+    def plot_group(methods, pred_row, res_row):
 
         nonlocal im_pred_last
         nonlocal im_res_last
@@ -569,54 +566,130 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             im_res_last = im_res
 
     # ============================================================
-    # FNO
+    # FNO methods
     # ============================================================
 
-    plot_method_group(
+    plot_group(
         fno_methods,
         pred_row=0,
         res_row=1
     )
 
     # ============================================================
-    # LNO
+    # LNO methods
     # ============================================================
 
-    plot_method_group(
+    plot_group(
         lno_methods,
         pred_row=2,
         res_row=3
     )
 
     # ============================================================
-    # Row labels for LNO
+    # CLEAN
     # ============================================================
 
-    # Prediction label on LNO row
-    fig.text(
-        0.005,
-        0.30,
-        "Prediction",
-        va="center",
-        ha="left",
-        fontsize=8,
-        fontweight="bold",
-        rotation=90
-    )
+    if clean_method is not None:
+
+        clean_pred = all_preds[clean_method]
+        clean_res = clean_pred - c
+
+        # --------------------------------------------------------
+        # CLEAN prediction
+        # --------------------------------------------------------
+
+        ax_clean_pred = fig.add_subplot(
+            gs[0, 7]
+        )
+
+        ax_clean_pred.imshow(
+            clean_pred,
+            origin="lower",
+            cmap="inferno",
+            vmin=0,
+            vmax=c_max
+        )
+
+        ax_clean_pred.set_title(
+            "CLEAN",
+            fontsize=8,
+            fontweight="bold"
+        )
+
+        ax_clean_pred.axis("off")
+
+        # --------------------------------------------------------
+        # CLEAN residual
+        # --------------------------------------------------------
+
+        ax_clean_res = fig.add_subplot(
+            gs[1, 7]
+        )
+
+        ax_clean_res.imshow(
+            clean_res,
+            origin="lower",
+            cmap="RdBu_r",
+            vmin=-global_res_lim,
+            vmax=global_res_lim
+        )
+
+        ax_clean_res.axis("off")
+
+        # --------------------------------------------------------
+        # LNO rows
+        # --------------------------------------------------------
+
+        ax_clean_lno = fig.add_subplot(
+            gs[2, 7]
+        )
+
+        ax_clean_lno.imshow(
+            clean_pred,
+            origin="lower",
+            cmap="inferno",
+            vmin=0,
+            vmax=c_max
+        )
+
+        ax_clean_lno.set_title(
+            "CLEAN",
+            fontsize=8,
+            fontweight="bold"
+        )
+
+        ax_clean_lno.axis("off")
+
+        ax_clean_lno_res = fig.add_subplot(
+            gs[3, 7]
+        )
+
+        ax_clean_lno_res.imshow(
+            clean_res,
+            origin="lower",
+            cmap="RdBu_r",
+            vmin=-global_res_lim,
+            vmax=global_res_lim
+        )
+
+        ax_clean_lno_res.axis("off")
 
     # ============================================================
-    # Colorbar — predictions
-    #
-    # Span both prediction rows
+    # Colorbars
     # ============================================================
 
-    ax_cbar_pred = fig.add_subplot(
-        gs[[0, 2], -1]
-    )
+    # Uso un asse manuale per evitare problemi con GridSpec
+    # e per farlo occupare entrambe le sezioni.
+    pos_pred = fig.add_axes([
+        0.978,
+        0.51,
+        0.012,
+        0.34
+    ])
 
     cbar_pred = fig.colorbar(
         im_pred_last,
-        cax=ax_cbar_pred
+        cax=pos_pred
     )
 
     cbar_pred.set_label(
@@ -628,19 +701,18 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         labelsize=7
     )
 
-    # ============================================================
-    # Colorbar — residuals
-    #
-    # Span both residual rows
-    # ============================================================
+    # ------------------------------------------------------------
 
-    ax_cbar_res = fig.add_subplot(
-        gs[[1, 3], -1]
-    )
+    pos_res = fig.add_axes([
+        0.978,
+        0.10,
+        0.012,
+        0.34
+    ])
 
     cbar_res = fig.colorbar(
         im_res_last,
-        cax=ax_cbar_res
+        cax=pos_res
     )
 
     cbar_res.set_label(
@@ -653,16 +725,37 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     )
 
     # ============================================================
-    # Horizontal separator between FNO and LNO
+    # Vertical separator before CLEAN
     # ============================================================
 
     fig.text(
-        0.5,
-        0.505,
-        "LNO methods",
+        0.875,
+        0.50,
+        "",
+        va="center"
+    )
+
+    # ============================================================
+    # Section labels
+    # ============================================================
+
+    fig.text(
+        0.45,
+        0.94,
+        "FNO-based methods",
         ha="center",
         va="center",
-        fontsize=10,
+        fontsize=11,
+        fontweight="bold"
+    )
+
+    fig.text(
+        0.45,
+        0.48,
+        "LNO-based methods",
+        ha="center",
+        va="center",
+        fontsize=11,
         fontweight="bold"
     )
 
@@ -674,7 +767,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
         f"Methods Comparison — Sample {sample_idx}",
         fontsize=13,
         fontweight="bold",
-        y=0.965
+        y=0.975
     )
 
     # ============================================================
@@ -751,6 +844,12 @@ def save_comparison_plot_2(sample_idx, dirty, clean, predictions, output_dir):
     plt.savefig(path, dpi=120, bbox_inches="tight")
     plt.close()
 
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+
+
 def save_metrics_chart(all_metrics, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -775,10 +874,10 @@ def save_metrics_chart(all_metrics, output_dir):
     labels = [display_names.get(m, m) for m in methods]
 
     metric_info = [
-        ("flux",    "Flux Error (%) ↓",       "#E07B54"),
-        ("psnr",    "PSNR (dB) ↑",             "#4E9AB3"),
-        ("ssim",    "SSIM ↑",                  "#6ABF7B"),
-        ("time_ms", "Time per Sample (ms) ↓",  "#B07CC6"),
+        ("flux",    "Flux Error (%) ↓",      "#E07B54"),
+        ("psnr",    "PSNR (dB) ↑",            "#4E9AB3"),
+        ("ssim",    "SSIM ↑",                 "#6ABF7B"),
+        ("time_ms", "Time per Sample (ms) ↓", "#B07CC6"),
     ]
 
     fig, axes = plt.subplots(
@@ -818,14 +917,23 @@ def save_metrics_chart(all_metrics, output_dir):
         )
 
         # -----------------------------------------
-        # Valore medio sopra ogni barra
+        # TTO: tratteggio
         # -----------------------------------------
+        for bar, method in zip(bars, methods):
+            if "+TTO" in method:
+                bar.set_hatch("//")
+                bar.set_edgecolor("#333333")
+                bar.set_linewidth(0.8)
+
+        # -----------------------------------------
+        # Valori sopra le barre
+        # -----------------------------------------
+        ymax = np.nanmax(means + stds)
+
         for bar, mean, std in zip(bars, means, stds):
 
-            # Spazio proporzionale alla grandezza della metrica
             offset = max(
-                np.nanmax(means) * 0.015,
-                np.nanmax(stds) * 0.05,
+                ymax * 0.015,
                 1e-6
             )
 
@@ -842,8 +950,7 @@ def save_metrics_chart(all_metrics, output_dir):
                 value_text,
                 ha="center",
                 va="bottom",
-                fontsize=9,
-                fontweight="normal"
+                fontsize=8.5
             )
 
         ax.set_title(
@@ -868,8 +975,6 @@ def save_metrics_chart(all_metrics, output_dir):
 
         ax.set_axisbelow(True)
 
-        ax.set_ylim(bottom=0)
-
         # -----------------------------------------
         # TIME: scala logaritmica
         # -----------------------------------------
@@ -877,18 +982,16 @@ def save_metrics_chart(all_metrics, output_dir):
 
             ax.set_yscale("log")
 
-            # Lascia spazio sopra CLEAN
-            ymax = np.nanmax(means + stds)
+            positive = means[means > 0]
+
+            ymin = np.nanmin(positive) * 0.7
+            ymax_log = np.nanmax(means + stds) * 2.0
 
             ax.set_ylim(
-                bottom=max(
-                    np.nanmin(means[means > 0]) * 0.7,
-                    1e-1
-                ),
-                top=ymax * 2.0
+                bottom=max(ymin, 1e-1),
+                top=ymax_log
             )
 
-            # Tick leggibili
             ax.yaxis.set_major_locator(
                 matplotlib.ticker.LogLocator(
                     base=10,
@@ -902,6 +1005,35 @@ def save_metrics_chart(all_metrics, output_dir):
                 )
             )
 
+        else:
+            ax.set_ylim(bottom=0)
+
+    # -----------------------------------------
+    # Legenda TTO
+    # -----------------------------------------
+    from matplotlib.patches import Patch
+
+    legend_elements = [
+        Patch(
+            facecolor="white",
+            edgecolor="#333333",
+            label="Model"
+        ),
+        Patch(
+            facecolor="white",
+            edgecolor="#333333",
+            hatch="//",
+            label="Model + TTO"
+        )
+    ]
+
+    axes[0].legend(
+        handles=legend_elements,
+        loc="upper right",
+        fontsize=9,
+        frameon=True
+    )
+
     fig.suptitle(
         "Benchmark Metrics",
         fontsize=16,
@@ -909,7 +1041,9 @@ def save_metrics_chart(all_metrics, output_dir):
         y=0.995
     )
 
-    fig.tight_layout(rect=[0, 0, 1, 0.97])
+    fig.tight_layout(
+        rect=[0, 0, 1, 0.97]
+    )
 
     path = os.path.join(
         output_dir,
