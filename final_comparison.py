@@ -384,8 +384,8 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     #   CLEAN Res.  R1    R2    R3    R4    R5    R6
     # ============================================================
 
-    cell_w = 2.2
-    cell_h = 2.2
+    cell_w = 2.0
+    cell_h = 2.0
 
     fig_w = cell_w * 8
     fig_h = cell_h * 4
@@ -403,10 +403,10 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             1, 1, 1, 1, 1, 1, 1, 0.07
         ],
 
-        hspace=0.28,
-        wspace=0.08,
+        hspace=0.12,
+        wspace=0.025,
 
-        left=0.055,
+        left=0.045,
         right=0.965,
         top=0.88,
         bottom=0.05,
@@ -532,7 +532,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     fig.text(
         0.008,
         0.76,
-        "FNO\nPrediction",
+        "Prediction",
         ha="left",
         va="center",
         fontsize=9,
@@ -542,7 +542,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     fig.text(
         0.008,
         0.57,
-        "FNO\nResidual",
+        "Residual",
         ha="left",
         va="center",
         fontsize=9,
@@ -552,7 +552,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     fig.text(
         0.008,
         0.34,
-        "LNO\nPrediction",
+        "Prediction",
         ha="left",
         va="center",
         fontsize=9,
@@ -562,7 +562,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     fig.text(
         0.008,
         0.15,
-        "LNO\nResidual",
+        "Residual",
         ha="left",
         va="center",
         fontsize=9,
@@ -733,7 +733,6 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     fig.text(
         0.49,
         0.94,
-        "FNO-based methods",
         ha="center",
         va="center",
         fontsize=11,
@@ -743,7 +742,6 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     fig.text(
         0.49,
         0.48,
-        "LNO-based methods",
         ha="center",
         va="center",
         fontsize=11,
