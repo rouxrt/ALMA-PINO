@@ -597,7 +597,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             # ----------------------------------------------------
 
             ax_p = fig.add_subplot(
-                gs[pred_col, row]
+                gs[row, pred_col]
             )
 
             im_pred = ax_p.imshow(
@@ -628,7 +628,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
             # ----------------------------------------------------
 
             ax_r = fig.add_subplot(
-                gs[res_col, row]
+                gs[row, res_col]
             )
 
             im_res = ax_r.imshow(
