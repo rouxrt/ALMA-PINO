@@ -351,7 +351,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
         # ── Colonna 0: Dirty (riga 0) e GT (riga 1) ──
         ax_dirty = fig.add_subplot(gs[0, 0])
         im_d = ax_dirty.imshow(d, origin="lower", cmap="inferno",
-                               vmin=-abs(d).max(), vmax=abs(d).max())
+                               vmin=d.min(), vmax=d.max())
         ax_dirty.set_title("Dirty\n(Input)", fontsize=8, fontweight="bold")
         ax_dirty.axis("off")
 
@@ -391,10 +391,10 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
             im_res_last = im_res
 
         # ── Colorbar predizioni (colonna colorbar, riga 0) ──
-        ax_cbar_pred = fig.add_subplot(gs[0, -1])
-        cbar_pred = fig.colorbar(im_d, cax=ax_cbar_pred)
-        cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
-        cbar_pred.ax.tick_params(labelsize=6)
+        # ax_cbar_pred = fig.add_subplot(gs[0, -1])
+        # cbar_pred = fig.colorbar(im_d, cax=ax_cbar_pred)
+        # cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
+        # cbar_pred.ax.tick_params(labelsize=6)
 
         # ── Colorbar residui (colonna colorbar, riga 1) ──
         ax_cbar_res = fig.add_subplot(gs[1, -1])
