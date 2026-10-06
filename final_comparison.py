@@ -1678,7 +1678,7 @@ def run_benchmark(args):
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
-        if sample_idx == 4:
+        if sample_idx == 5:
             break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
@@ -1852,7 +1852,7 @@ if __name__ == "__main__":
                         help="TTO learning rate for PI-LNO3d (Keep << lr training)")
 
     # Output
-    parser.add_argument("--output_dir", type=str, default="final_benchmark")
+    parser.add_argument("--output_dir", type=str, default="final_bench")
     parser.add_argument("--n_viz",      type=int, default=5,
                         help="Number of samples for which to save comparative plots")
 
