@@ -298,9 +298,127 @@ def accumulate(acc, m):
     for k in acc:
         acc[k].append(m[k])
 
+def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
+                         max_methods_per_fig=7):
+    """
+    Layout orizzontale: 2 righe (Prediction | Residual) × N colonne (metodi).
+    - Prima colonna sempre: Dirty e GT sovrapposti in uno spazio doppio
+    - Colorbar condivisa per le predizioni (inferno)
+    - Colorbar condivisa per i residui (RdBu_r)
+    - Auto-split in più figure se i metodi sono troppi
+    """
+    os.makedirs(output_dir, exist_ok=True)
 
+    d     = dirty.cpu().mean(dim=0).numpy()   # proiezione 2D media spettrale
+    c     = clean.cpu().mean(dim=0).numpy()
+    c_max = c.max() if c.max() > 0 else 1.0
 
-def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
+    # Calcola il range simmetrico globale dei residui su TUTTI i metodi
+    # → colorbars confrontabili tra figure diverse
+    all_preds = {name: predictions[name].cpu().mean(dim=0).numpy()
+                 for name in predictions}
+    global_res_lim = max(
+        max(abs((p - c).min()), abs((p - c).max()))
+        for p in all_preds.values()
+    )
+    global_res_lim = max(global_res_lim, 1e-9)
+
+    methods = list(predictions.keys())
+
+    # ── Split automatico in chunk da max_methods_per_fig ──
+    chunks = [methods[i:i + max_methods_per_fig]
+              for i in range(0, len(methods), max_methods_per_fig)]
+
+    for chunk_idx, chunk in enumerate(chunks):
+        n_cols = len(chunk) + 1   # +1 per Dirty/GT nella prima colonna
+
+        # figsize: larghezza proporzionale al numero di colonne
+        cell_w, cell_h = 2.2, 2.4
+        fig_w = cell_w * n_cols + 0.8   # 0.8 per le colorbars
+        fig_h = cell_h * 2 + 0.6       # 2 righe + titoli
+
+        fig = plt.figure(figsize=(fig_w, fig_h))
+
+        # GridSpec: 2 righe × (1 + n_metodi + 1) — ultima colonna per colorbar
+        gs = gridspec.GridSpec(
+            2, n_cols + 1,
+            figure=fig,
+            width_ratios=[1.0] * n_cols + [0.05],   # ultima colonna stretta = colorbar
+            hspace=0.35, wspace=0.08,
+            left=0.03, right=0.97, top=0.88, bottom=0.05,
+        )
+
+        # ── Colonna 0: Dirty (riga 0) e GT (riga 1) ──
+        ax_dirty = fig.add_subplot(gs[0, 0])
+        im_d = ax_dirty.imshow(d, origin="lower", cmap="inferno",
+                               vmin=0, vmax=c_max)
+        ax_dirty.set_title("Dirty\n(Input)", fontsize=8, fontweight="bold")
+        ax_dirty.axis("off")
+
+        ax_gt = fig.add_subplot(gs[1, 0])
+        ax_gt.imshow(c, origin="lower", cmap="inferno", vmin=0, vmax=c_max)
+        ax_gt.set_title("Ground\nTruth", fontsize=8, fontweight="bold")
+        ax_gt.axis("off")
+
+        # ── Etichette riga ──
+        ax_dirty.text(-0.05, 0.5, "Prediction", va="center", ha="right",
+                      fontsize=8, fontweight="bold", color="#444",
+                      transform=ax_dirty.transAxes, rotation=90)
+        ax_gt.text(-0.05, 0.5, "Residual", va="center", ha="right",
+                   fontsize=8, fontweight="bold", color="#444",
+                   transform=ax_gt.transAxes, rotation=90)
+
+        im_res_last = None   # per la colorbar dei residui
+
+        for col, name in enumerate(chunk, start=1):
+            pred_np = all_preds[name]
+            res_np  = pred_np - c
+
+            # Riga 0 — predizione
+            ax_p = fig.add_subplot(gs[0, col])
+            ax_p.imshow(pred_np, origin="lower", cmap="inferno",
+                        vmin=0, vmax=c_max)
+            # Abbrevia nomi lunghi per leggibilità
+            short = name.replace("PI-", "π-").replace("+TTO", "\n+TTO")
+            ax_p.set_title(short, fontsize=7.5, fontweight="bold")
+            ax_p.axis("off")
+
+            # Riga 1 — residuo (range globale condiviso)
+            ax_r = fig.add_subplot(gs[1, col])
+            im_res = ax_r.imshow(res_np, origin="lower", cmap="RdBu_r",
+                                 vmin=-global_res_lim, vmax=global_res_lim)
+            ax_r.axis("off")
+            im_res_last = im_res
+
+        # ── Colorbar predizioni (colonna colorbar, riga 0) ──
+        ax_cbar_pred = fig.add_subplot(gs[0, -1])
+        cbar_pred = fig.colorbar(im_d, cax=ax_cbar_pred)
+        cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
+        cbar_pred.ax.tick_params(labelsize=6)
+
+        # ── Colorbar residui (colonna colorbar, riga 1) ──
+        ax_cbar_res = fig.add_subplot(gs[1, -1])
+        if im_res_last is not None:
+            cbar_res = fig.colorbar(im_res_last, cax=ax_cbar_res)
+            cbar_res.set_label("Pred − GT", fontsize=6)
+            cbar_res.ax.tick_params(labelsize=6)
+
+        # ── Titolo ──
+        suffix = f" (part {chunk_idx + 1}/{len(chunks)})" if len(chunks) > 1 else ""
+        plt.suptitle(
+            f"Methods Comparison — Sample {sample_idx}{suffix}",
+            fontsize=10, fontweight="bold", y=0.97
+        )
+
+        fname = (f"comparison_sample_{sample_idx:03d}_part{chunk_idx + 1}.png"
+                 if len(chunks) > 1
+                 else f"comparison_sample_{sample_idx:03d}.png")
+        path = os.path.join(output_dir, fname)
+        plt.savefig(path, dpi=150, bbox_inches="tight")
+        plt.close()
+        print(f"  → Saved: {path}")
+
+def save_comparison_plot_2(sample_idx, dirty, clean, predictions, output_dir):
     os.makedirs(output_dir, exist_ok=True)
 
     d = dirty.cpu().mean(dim=0).numpy()
@@ -520,7 +638,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1000)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=3000)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
