@@ -279,7 +279,7 @@ def compute_metrics(pred, clean, device):
     pred_norm  = pred  / smax
     clean_norm = clean / smax
 
-    mask      = clean_norm > 0.01
+    mask      = clean_norm > 1e-6
     true_flux = clean_norm[mask].sum()
     pred_flux = pred_norm[mask].sum()
     flux_err  = torch.abs(pred_flux - true_flux) / (true_flux + 1e-8) * 100
