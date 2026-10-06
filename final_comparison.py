@@ -370,18 +370,24 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     #   row 2 = LNO predictions
     #   row 3 = LNO residuals
     #
-    # 9 columns:
+    # 8 columns:
     #
-    #   col 0 = Dirty / GT
+    #   col 0   = Dirty / GT / CLEAN / CLEAN residual
     #   col 1-6 = six FNO/LNO methods
-    #   col 7 = CLEAN
-    #   col 8 = colorbar
+    #   col 7   = colorbar
+    #
+    # Schema:
+    #
+    #   Dirty       FNO1  FNO2  FNO3  FNO4  FNO5  FNO6
+    #   GroundTruth R1    R2    R3    R4    R5    R6
+    #   CLEAN       LNO1  LNO2  LNO3  LNO4  LNO5  LNO6
+    #   CLEAN Res.  R1    R2    R3    R4    R5    R6
     # ============================================================
 
     cell_w = 2.2
     cell_h = 2.2
 
-    fig_w = cell_w * 9
+    fig_w = cell_w * 8
     fig_h = cell_h * 4
 
     fig = plt.figure(
@@ -390,27 +396,38 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
     gs = gridspec.GridSpec(
         4,
-        9,
+        8,
         figure=fig,
 
         width_ratios=[
-            1, 1, 1, 1, 1, 1, 1, 1, 0.07
+            1, 1, 1, 1, 1, 1, 1, 0.07
         ],
 
         hspace=0.28,
         wspace=0.08,
 
-        left=0.035,
-        right=0.975,
+        left=0.055,
+        right=0.965,
         top=0.88,
         bottom=0.05,
     )
 
     # ============================================================
-    # Column 0: Dirty / Ground Truth
+    # Column 0
+    #
+    # Dirty
+    # Ground Truth
+    # CLEAN
+    # CLEAN residual
     # ============================================================
 
-    ax_dirty = fig.add_subplot(gs[0, 0])
+    # ------------------------------------------------------------
+    # Dirty
+    # ------------------------------------------------------------
+
+    ax_dirty = fig.add_subplot(
+        gs[0, 0]
+    )
 
     ax_dirty.imshow(
         d,
@@ -428,7 +445,13 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
     ax_dirty.axis("off")
 
-    ax_gt = fig.add_subplot(gs[1, 0])
+    # ------------------------------------------------------------
+    # Ground Truth
+    # ------------------------------------------------------------
+
+    ax_gt = fig.add_subplot(
+        gs[1, 0]
+    )
 
     ax_gt.imshow(
         c,
@@ -446,12 +469,61 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
 
     ax_gt.axis("off")
 
-    # Empty cells for LNO rows
-    ax = fig.add_subplot(gs[2, 0])
-    ax.axis("off")
+    # ------------------------------------------------------------
+    # CLEAN
+    # ------------------------------------------------------------
 
-    ax = fig.add_subplot(gs[3, 0])
-    ax.axis("off")
+    if clean_method is not None:
+
+        clean_pred = all_preds[clean_method]
+        clean_res = clean_pred - c
+
+        ax_clean = fig.add_subplot(
+            gs[2, 0]
+        )
+
+        ax_clean.imshow(
+            clean_pred,
+            origin="lower",
+            cmap="inferno",
+            vmin=0,
+            vmax=c_max
+        )
+
+        ax_clean.set_title(
+            "CLEAN",
+            fontsize=8,
+            fontweight="bold"
+        )
+
+        ax_clean.axis("off")
+
+        # --------------------------------------------------------
+        # CLEAN residual
+        # --------------------------------------------------------
+
+        ax_clean_res = fig.add_subplot(
+            gs[3, 0]
+        )
+
+        ax_clean_res.imshow(
+            clean_res,
+            origin="lower",
+            cmap="RdBu_r",
+            vmin=-global_res_lim,
+            vmax=global_res_lim
+        )
+
+        ax_clean_res.axis("off")
+
+    else:
+
+        # Se CLEAN non esiste, lascia vuote le due celle
+        ax = fig.add_subplot(gs[2, 0])
+        ax.axis("off")
+
+        ax = fig.add_subplot(gs[3, 0])
+        ax.axis("off")
 
     # ============================================================
     # Row labels
@@ -586,150 +658,69 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     )
 
     # ============================================================
-    # CLEAN
-    # ============================================================
-
-    if clean_method is not None:
-
-        clean_pred = all_preds[clean_method]
-        clean_res = clean_pred - c
-
-        # --------------------------------------------------------
-        # CLEAN prediction
-        # --------------------------------------------------------
-
-        ax_clean_pred = fig.add_subplot(
-            gs[0, 7]
-        )
-
-        ax_clean_pred.imshow(
-            clean_pred,
-            origin="lower",
-            cmap="inferno",
-            vmin=0,
-            vmax=c_max
-        )
-
-        ax_clean_pred.set_title(
-            "CLEAN",
-            fontsize=8,
-            fontweight="bold"
-        )
-
-        ax_clean_pred.axis("off")
-
-        # --------------------------------------------------------
-        # CLEAN residual
-        # --------------------------------------------------------
-
-        ax_clean_res = fig.add_subplot(
-            gs[1, 7]
-        )
-
-        ax_clean_res.imshow(
-            clean_res,
-            origin="lower",
-            cmap="RdBu_r",
-            vmin=-global_res_lim,
-            vmax=global_res_lim
-        )
-
-        ax_clean_res.axis("off")
-
-        # --------------------------------------------------------
-        # LNO rows
-        # --------------------------------------------------------
-
-        ax_clean_lno = fig.add_subplot(
-            gs[2, 7]
-        )
-
-        ax_clean_lno.imshow(
-            clean_pred,
-            origin="lower",
-            cmap="inferno",
-            vmin=0,
-            vmax=c_max
-        )
-
-        ax_clean_lno.set_title(
-            "CLEAN",
-            fontsize=8,
-            fontweight="bold"
-        )
-
-        ax_clean_lno.axis("off")
-
-        ax_clean_lno_res = fig.add_subplot(
-            gs[3, 7]
-        )
-
-        ax_clean_lno_res.imshow(
-            clean_res,
-            origin="lower",
-            cmap="RdBu_r",
-            vmin=-global_res_lim,
-            vmax=global_res_lim
-        )
-
-        ax_clean_lno_res.axis("off")
-
-    # ============================================================
     # Colorbars
     # ============================================================
 
-    # Uso un asse manuale per evitare problemi con GridSpec
-    # e per farlo occupare entrambe le sezioni.
-    pos_pred = fig.add_axes([
-        0.978,
-        0.51,
-        0.012,
-        0.34
-    ])
-
-    cbar_pred = fig.colorbar(
-        im_pred_last,
-        cax=pos_pred
-    )
-
-    cbar_pred.set_label(
-        "Flux [Jy/px²]",
-        fontsize=8
-    )
-
-    cbar_pred.ax.tick_params(
-        labelsize=7
-    )
-
+    # ------------------------------------------------------------
+    # Prediction colorbar
     # ------------------------------------------------------------
 
-    pos_res = fig.add_axes([
-        0.978,
-        0.10,
-        0.012,
-        0.34
-    ])
+    if im_pred_last is not None:
 
-    cbar_res = fig.colorbar(
-        im_res_last,
-        cax=pos_res
-    )
+        pos_pred = fig.add_axes([
+            0.972,
+            0.51,
+            0.012,
+            0.34
+        ])
 
-    cbar_res.set_label(
-        "Pred − GT",
-        fontsize=8
-    )
+        cbar_pred = fig.colorbar(
+            im_pred_last,
+            cax=pos_pred
+        )
 
-    cbar_res.ax.tick_params(
-        labelsize=7
-    )
+        cbar_pred.set_label(
+            "Flux [Jy/px²]",
+            fontsize=8
+        )
+
+        cbar_pred.ax.tick_params(
+            labelsize=7
+        )
+
+    # ------------------------------------------------------------
+    # Residual colorbar
+    # ------------------------------------------------------------
+
+    if im_res_last is not None:
+
+        pos_res = fig.add_axes([
+            0.972,
+            0.10,
+            0.012,
+            0.34
+        ])
+
+        cbar_res = fig.colorbar(
+            im_res_last,
+            cax=pos_res
+        )
+
+        cbar_res.set_label(
+            "Pred − GT",
+            fontsize=8
+        )
+
+        cbar_res.ax.tick_params(
+            labelsize=7
+        )
 
     # ============================================================
-    # Vertical separator before CLEAN
+    # Separator between input/CLEAN and neural methods
     # ============================================================
 
     fig.text(
-        0.875,
+        0.145,
         0.50,
         "",
         va="center"
@@ -740,7 +731,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     # ============================================================
 
     fig.text(
-        0.45,
+        0.49,
         0.94,
         "FNO-based methods",
         ha="center",
@@ -750,7 +741,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir):
     )
 
     fig.text(
-        0.45,
+        0.49,
         0.48,
         "LNO-based methods",
         ha="center",
