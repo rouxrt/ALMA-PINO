@@ -1678,6 +1678,8 @@ def run_benchmark(args):
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
+        if sample_idx == 4:
+            break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
@@ -1686,6 +1688,7 @@ def run_benchmark(args):
         psf = uv_to_psf(uv_mask)
 
         predictions_for_plot = {}   
+
 
         for name, (model, is_3d, do_tto, tto_cfg) in models_to_run.items():
             infer_fn = infer_fno2d if not is_3d else infer_fno3d
@@ -1749,6 +1752,8 @@ def run_benchmark(args):
 
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
+
+
 
 
     avg_metrics = {}
