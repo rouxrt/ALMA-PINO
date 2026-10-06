@@ -317,10 +317,16 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
     # → colorbars confrontabili tra figure diverse
     all_preds = {name: predictions[name].cpu().mean(dim=0).numpy()
                  for name in predictions}
-    global_res_lim = max(
-        max(abs((p - c).min()), abs((p - c).max()))
-        for p in all_preds.values()
+    all_res_values = np.concatenate([
+    np.abs(p - c).ravel()
+    for p in all_preds.values()
+    ])
+
+    global_res_lim = np.percentile(
+    all_res_values,
+    99.5
     )
+
     global_res_lim = max(global_res_lim, 1e-9)
 
     methods = list(predictions.keys())
@@ -376,7 +382,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
 
             # Riga 0 — predizione
             ax_p = fig.add_subplot(gs[0, col])
-            ax_p.imshow(pred_np, origin="lower", cmap="inferno",
+            img_pred = ax_p.imshow(pred_np, origin="lower", cmap="inferno",
                         vmin=0, vmax=c_max)
             # Abbrevia nomi lunghi per leggibilità
             short = name.replace("+TTO", "\n+TTO")
@@ -392,7 +398,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
 
         # ── Colorbar predizioni (colonna colorbar, riga 0) ──
         ax_cbar_pred = fig.add_subplot(gs[0, -1])
-        cbar_pred = fig.colorbar(im_d, cax=ax_cbar_pred)
+        cbar_pred = fig.colorbar(img_pred, cax=ax_cbar_pred)
         cbar_pred.set_label("Flux [Jy/px²]", fontsize=6)
         cbar_pred.ax.tick_params(labelsize=6)
 
@@ -660,7 +666,8 @@ def run_benchmark(args):
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
 
-        
+        if sample_idx == 4:
+            break
 
     avg_metrics = {}
     for m in method_names:
