@@ -1253,8 +1253,6 @@ def run_benchmark(args):
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
 
-        if sample_idx == 10:
-            break
 
     avg_metrics = {}
     for m in method_names:
