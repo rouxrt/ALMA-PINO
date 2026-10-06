@@ -351,7 +351,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
         # ── Colonna 0: Dirty (riga 0) e GT (riga 1) ──
         ax_dirty = fig.add_subplot(gs[0, 0])
         im_d = ax_dirty.imshow(d, origin="lower", cmap="inferno",
-                               vmin=0, vmax=c_max)
+                               vmin=-abs(d).max(), vmax=abs(d).max())
         ax_dirty.set_title("Dirty\n(Input)", fontsize=8, fontweight="bold")
         ax_dirty.axis("off")
 
@@ -379,7 +379,7 @@ def save_comparison_plot(sample_idx, dirty, clean, predictions, output_dir,
             ax_p.imshow(pred_np, origin="lower", cmap="inferno",
                         vmin=0, vmax=c_max)
             # Abbrevia nomi lunghi per leggibilità
-            short = name.replace("PI-", "π-").replace("+TTO", "\n+TTO")
+            short = name.replace("+TTO", "\n+TTO")
             ax_p.set_title(short, fontsize=7.5, fontweight="bold")
             ax_p.axis("off")
 
@@ -638,7 +638,7 @@ def run_benchmark(args):
 
         # CLEAN
         timer.start()
-        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=3000)[0]
+        pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=1000)[0]
         t_clean = timer.stop()
 
         m_clean = compute_metrics(pred_clean, clean_s, device)
@@ -659,6 +659,9 @@ def run_benchmark(args):
 
         # Progress
         print(f"  [{sample_idx + 1:>4}/{te_size}]", end="\r")
+
+        if sample_idx == 5:
+            break
 
     avg_metrics = {}
     for m in method_names:
