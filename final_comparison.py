@@ -1877,7 +1877,7 @@ def run_benchmark(args):
         pred_clean = hogbom_clean_batch(dirty.to(device), psf.to(device), n_iter=args.n_iter_clean)[0]
         t_clean = timer.stop()
 
-        m_clean = compute_metrics(pred_clean, clean_s, device)
+        m_clean = compute_metrics(pred_clean, clean_s, dirty_s, device)
         if m_clean:
             m_clean["time_ms"] = t_clean
             accumulate(acc["CLEAN"], m_clean)
