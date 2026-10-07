@@ -351,6 +351,16 @@ def make_source_mask(clean, dirty, mode="relative", threshold=0.01):
             sigma_threshold * sigmas[:, None, None]
         )
 
+        print("\nSIGMA DIAGNOSTIC")
+
+        for z in range(len(sigmas)):
+            print(
+                f"z={z:02d} | "
+                f"sigma={sigmas[z].item():.6e} | "
+                f"clean_max={clean[z].max().item():.6e} | "
+                f"clean/sigma={clean[z].max().item() / (sigmas[z].item() + 1e-12):.2f}"
+    )
+
     else:
         raise ValueError(f"Unknown mask mode: {mode}")
 
@@ -362,11 +372,6 @@ def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
     clean = clean.to(device)
     dirty = dirty.to(device)
 
-    # --------------------------------------------------
-    # Noise estimation: one sigma per spectral channel
-    # --------------------------------------------------
-
-    sigmas = estimate_cube_sigma(dirty)
 
     # --------------------------------------------------
     # Source mask: clean > k sigma
@@ -1903,8 +1908,8 @@ def run_benchmark(args):
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
-        # if sample_idx == 5:
-        #     break
+        if sample_idx == 3:
+            break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
