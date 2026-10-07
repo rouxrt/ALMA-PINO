@@ -1607,6 +1607,7 @@ def print_metrics_table(all_metrics):
     col = 26  # larghezza colonna "mean ± std"
     header = (f"\n{'Metodo':<20}"
               f"  {'Flux Error (%)':<{col}}"
+              f"  {'MAE':<{col}}"
               f"  {'PSNR (dB)':<{col}}"
               f"  {'SSIM':<{col}}"
               f"  {'Time (ms)':<{col}}")
@@ -1617,6 +1618,7 @@ def print_metrics_table(all_metrics):
             return f"{m[key]:.4f} ± {m[key+'_std']:.4f}"
         print(f"{name:<20}"
               f"  {fmt('flux'):<{col}}"
+              f"  {fmt('mae_src'):<{col}}"
               f"  {fmt('psnr'):<{col}}"
               f"  {fmt('ssim'):<{col}}"
               f"  {fmt('time_ms'):<{col}}")
@@ -1678,13 +1680,13 @@ def run_benchmark(args):
             method_names.append(f"{name}+TTO")
     method_names += ["CLEAN"]
 
-    acc = {m: {"flux": [], "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
+    acc = {m: {"flux": [], "mae_src": [], "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
     n_valid = {m: 0 for m in method_names}
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
-        if sample_idx == 5:
-            break
+        # if sample_idx == 5:
+        #     break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
