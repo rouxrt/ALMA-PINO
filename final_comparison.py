@@ -1884,7 +1884,21 @@ def run_benchmark(args):
             method_names.append(f"{name}+TTO")
     method_names += ["CLEAN"]
 
-    acc = {m: {"flux": [], "mae_src": [], "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
+    acc = {m: {"flux_2s": [], 
+               "flux_3s": [],
+               "flux_5s": [],
+               "flux_10s": [],
+               "flux_05p": [],
+               "flux_1p": [],
+               "flux_2p": [],
+               "mae_src_2s": [],
+               "mae_src_3s": [],
+               "mae_src_5s": [],
+               "mae_src_10s": [],
+               "mae_src_05p": [],
+               "mae_src_1p": [],
+               "mae_src_2p": [],
+               "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
     n_valid = {m: 0 for m in method_names}
     timer = Timer(device)
 
