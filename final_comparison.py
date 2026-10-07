@@ -1781,6 +1781,27 @@ def save_metrics_chart_2(all_metrics, output_dir):
 def print_metrics_table(all_metrics):
     col = 26  # larghezza colonna "mean ± std"
     header = (f"\n{'Metodo':<20}"
+              f"  {'Flux Error (%)':<{col}}"
+              f"  {'MAE':<{col}}"
+              f"  {'PSNR (dB)':<{col}}"
+              f"  {'SSIM':<{col}}"
+              f"  {'Time (ms)':<{col}}")
+    print(header)
+    print("─" * len(header))
+    for name, m in all_metrics.items():
+        def fmt(key):
+            return f"{m[key]:.4f} ± {m[key+'_std']:.4f}"
+        print(f"{name:<20}"
+              f"  {fmt('flux'):<{col}}"
+              f"  {fmt('mae_src'):<{col}}"
+              f"  {fmt('psnr'):<{col}}"
+              f"  {fmt('ssim'):<{col}}"
+              f"  {fmt('time_ms'):<{col}}")
+    print()
+
+def print_metrics_table_1(all_metrics):
+    col = 26  # larghezza colonna "mean ± std"
+    header = (f"\n{'Metodo':<20}"
               f"  {'Flux Error (2sigma) (%)':<{col}}"
               f"  {'Flux Error (3sigma) (%)':<{col}}"
               f"  {'Flux Error (5sigma) (%)':<{col}}"
@@ -1900,8 +1921,8 @@ def run_benchmark(args):
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
-        # if sample_idx == 5:
-        #     break
+        if sample_idx == 2:
+            break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
