@@ -335,6 +335,27 @@ def estimate_cube_sigma(dirty, n_iter=5, clip_sigma=3.0):
 
     return torch.stack(sigmas)
 
+def make_source_mask(clean, dirty, mode="relative", threshold=0.01):
+
+    if mode == "relative":
+
+        smax = clean.max()
+        mask = clean > threshold * smax
+
+    elif mode == "sigma":
+
+        sigmas = estimate_cube_sigma(dirty)
+        sigma_threshold = threshold
+
+        mask = clean > (
+            sigma_threshold * sigmas[:, None, None]
+        )
+
+    else:
+        raise ValueError(f"Unknown mask mode: {mode}")
+
+    return mask
+
 def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
 
     pred = pred.to(device)
@@ -351,10 +372,14 @@ def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
     # Source mask: clean > k sigma
     # --------------------------------------------------
 
-    threshold = sigma_threshold * sigmas[:, None, None]
-
-    mask = clean > threshold
-
+    mask_2s = make_source_mask(clean, dirty, mode="sigma", threshold=2.0)
+    mask_3s = make_source_mask(clean, dirty, mode="sigma", threshold=3.0)
+    mask_5s = make_source_mask(clean, dirty, mode="sigma", threshold=5.0)
+    mask_10s = make_source_mask(clean, dirty, mode="sigma", threshold=10.0)
+    mask_05p = make_source_mask(clean, dirty, mode="relative", threshold=0.005)
+    mask_1p = make_source_mask(clean, dirty, mode="relative", threshold=0.01)
+    mask_2p = make_source_mask(clean, dirty, mode="relative", threshold=0.02)
+    masks = [mask_2s, mask_3s, mask_5s, mask_10s, mask_05p, mask_1p, mask_2p]
     # --------------------------------------------------
     # Normalization
     # --------------------------------------------------
@@ -370,19 +395,26 @@ def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
     # --------------------------------------------------
     # Metrics
     # --------------------------------------------------
+    fluxs = []
+    maes = []
 
-    true_flux = clean_norm[mask].sum()
-    pred_flux = pred_norm[mask].sum()
+    for mask in masks:
+        true_flux = clean_norm[mask].sum()
+        pred_flux = pred_norm[mask].sum()
 
-    flux_err = (
-        torch.abs(pred_flux - true_flux)
-        / (true_flux + 1e-8)
-        * 100
-    )
+        flux_err = (
+                torch.abs(pred_flux - true_flux)
+                / (true_flux + 1e-8)
+                * 100
+            )
+        
+        source_mae = torch.abs(
+                pred_norm[mask] - clean_norm[mask]
+            ).mean()
 
-    source_mae = torch.abs(
-        pred_norm[mask] - clean_norm[mask]
-    ).mean()
+        fluxs.append(flux_err)
+        maes.append(source_mae)
+
 
     p_val = psnr(
         pred_norm.unsqueeze(0),
@@ -397,8 +429,20 @@ def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
     )
 
     return {
-        "flux": flux_err.item(),
-        "mae_src": source_mae.item(),
+        "flux_2s": fluxs[0].item(),
+        "flux_3s": fluxs[1].item(),
+        "flux_5s": fluxs[2].item(),
+        "flux_10s": fluxs[3].item(),
+        "flux_05p": fluxs[4].item(),
+        "flux_1p": fluxs[5].item(),
+        "flux_2p": fluxs[6].item(),
+        "mae_src_2s": maes[0].item(),
+        "mae_src_3s": maes[1].item(),
+        "mae_src_5s": maes[2].item(),
+        "mae_src_10s": maes[3].item(),
+        "mae_src_05p": maes[4].item(),
+        "mae_src_1p": maes[5].item(),
+        "mae_src_2p": maes[6].item(),
         "psnr": p_val.item(),
         "ssim": s_val.item(),
     }
@@ -1742,8 +1786,20 @@ def save_metrics_chart_2(all_metrics, output_dir):
 def print_metrics_table(all_metrics):
     col = 26  # larghezza colonna "mean ± std"
     header = (f"\n{'Metodo':<20}"
-              f"  {'Flux Error (%)':<{col}}"
-              f"  {'MAE':<{col}}"
+              f"  {'Flux Error (2\sigma) (%)':<{col}}"
+              f"  {'Flux Error (3\sigma) (%)':<{col}}"
+              f"  {'Flux Error (5\sigma) (%)':<{col}}"
+              f"  {'Flux Error (10\sigma) (%)':<{col}}"
+              f"  {'Flux Error (0.5%) (%)':<{col}}"
+              f"  {'Flux Error (1%) (%)':<{col}}"
+              f"  {'Flux Error (2%) (%)':<{col}}"
+              f"  {'MAE (2\sigma)':<{col}}"
+              f"  {'MAE (3\sigma)':<{col}}"
+              f"  {'MAE (5\sigma)':<{col}}"
+              f"  {'MAE (10\sigma)':<{col}}"
+              f"  {'MAE (0.5%)':<{col}}"
+              f"  {'MAE (1%)':<{col}}"
+              f"  {'MAE (2%)':<{col}}"
               f"  {'PSNR (dB)':<{col}}"
               f"  {'SSIM':<{col}}"
               f"  {'Time (ms)':<{col}}")
