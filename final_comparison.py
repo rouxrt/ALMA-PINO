@@ -1921,8 +1921,8 @@ def run_benchmark(args):
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
-        if sample_idx == 2:
-            break
+        # if sample_idx == 2:
+        #     break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
