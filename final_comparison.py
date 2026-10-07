@@ -1863,7 +1863,7 @@ def run_benchmark(args):
                 )[0]   # [C, H, W]
                 t_tto = timer.stop()
 
-                m_tto = compute_metrics(pred_tto, clean_s, device)
+                m_tto = compute_metrics(pred_tto, clean_s, dirty_s, device)
                 if m_tto:
                     m_tto["time_ms"] = t_tto
                     accumulate(acc[f"{name}+TTO"], m_tto)
