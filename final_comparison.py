@@ -1841,7 +1841,7 @@ def run_benchmark(args):
             pred_pre = infer_fn(model, dirty, device)[0]   # [C, H, W]
             t_pre = timer.stop()
 
-            m_pre = compute_metrics(pred_pre, clean_s, device)
+            m_pre = compute_metrics(pred_pre, clean_s, dirty_s,device)
             if m_pre:
                 m_pre["time_ms"] = t_pre
                 accumulate(acc[name], m_pre)
