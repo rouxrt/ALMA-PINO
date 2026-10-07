@@ -285,11 +285,16 @@ def compute_metrics(pred, clean, device):
     pred_flux = pred_norm[mask].sum()
     flux_err  = torch.abs(pred_flux - true_flux) / (true_flux + 1e-8) * 100
 
+    source_mae = torch.abs(
+        pred_norm[mask] - clean_norm[mask]
+    ).mean()
+
     p_val = psnr(pred_norm.unsqueeze(0), clean_norm.unsqueeze(0), data_range=1.0)
     s_val = ssim(pred_norm.unsqueeze(0), clean_norm.unsqueeze(0), data_range=1.0)
 
     return {
         "flux": flux_err.item(),
+        "mae_src": source_mae.item(),
         "psnr": p_val.item(),
         "ssim": s_val.item(),
     }
