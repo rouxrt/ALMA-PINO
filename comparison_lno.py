@@ -1631,16 +1631,16 @@ def run_benchmark(args):
 
     full_dataset = ALMADataset(args.dataset_path)
     total    = len(full_dataset)
-    tr_size  = int(0.7 * total)
-    val_size = int(0.15 * total)
-    te_size  = total - tr_size - val_size
+    tr_size  = 0
+    val_size = 0
+    te_size  = total
 
     _, _, test_dataset = random_split(
         full_dataset,
         [tr_size, val_size, te_size],
         generator=torch.Generator().manual_seed(42),  
     )
-    test_loader = DataLoader(full_dataset, batch_size=1, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=False)
     print(f"Test set: {te_size} samples\n")
 
     #Load models
