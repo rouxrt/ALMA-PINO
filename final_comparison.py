@@ -267,9 +267,145 @@ def tto_optimize(model, dirty, psf, device, channels, tto_epochs, tto_lr, is_3d)
     model.load_state_dict(original_state)
     return pred_tto
 
+def estimate_sigma_mad_clipping(
+    image,
+    n_iter=5,
+    clip_sigma=3.0,
+):
+    """
+    Estimate the noise standard deviation using iterative
+    MAD-based sigma clipping.
+
+    Parameters
+    ----------
+    image : torch.Tensor
+        2D image [H, W].
+    n_iter : int
+        Number of clipping iterations.
+    clip_sigma : float
+        Clipping threshold in units of sigma.
+
+    Returns
+    -------
+    sigma : torch.Tensor
+        Robust estimate of the noise standard deviation.
+    """
+
+    x = image.flatten()
+
+    # Initial robust estimate
+    median = torch.median(x)
+    mad = torch.median(torch.abs(x - median))
+
+    sigma = 1.4826 * mad
+
+    # Iterative sigma clipping
+    for _ in range(n_iter):
+
+        mask = torch.abs(x - median) < clip_sigma * sigma
+        x_clipped = x[mask]
+
+        if x_clipped.numel() == 0:
+            break
+
+        median = torch.median(x_clipped)
+        mad = torch.median(torch.abs(x_clipped - median))
+
+        sigma = 1.4826 * mad
+
+    return sigma
+
+def estimate_cube_sigma(dirty, n_iter=5, clip_sigma=3.0):
+    """
+    Estimate one noise sigma per spectral channel.
+
+    dirty: [Z, H, W]
+    returns: [Z]
+    """
+
+    sigmas = []
+
+    for z in range(dirty.shape[0]):
+        sigma_z = estimate_sigma_mad_clipping(
+            dirty[z],
+            n_iter=n_iter,
+            clip_sigma=clip_sigma,
+        )
+        sigmas.append(sigma_z)
+
+    return torch.stack(sigmas)
+
+def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
+
+    pred = pred.to(device)
+    clean = clean.to(device)
+    dirty = dirty.to(device)
+
+    # --------------------------------------------------
+    # Noise estimation: one sigma per spectral channel
+    # --------------------------------------------------
+
+    sigmas = estimate_cube_sigma(dirty)
+
+    # --------------------------------------------------
+    # Source mask: clean > k sigma
+    # --------------------------------------------------
+
+    threshold = sigma_threshold * sigmas[:, None, None]
+
+    mask = clean > threshold
+
+    # --------------------------------------------------
+    # Normalization
+    # --------------------------------------------------
+
+    smax = clean.max()
+
+    if smax <= 0:
+        return None
+
+    pred_norm = pred / smax
+    clean_norm = clean / smax
+
+    # --------------------------------------------------
+    # Metrics
+    # --------------------------------------------------
+
+    true_flux = clean_norm[mask].sum()
+    pred_flux = pred_norm[mask].sum()
+
+    flux_err = (
+        torch.abs(pred_flux - true_flux)
+        / (true_flux + 1e-8)
+        * 100
+    )
+
+    source_mae = torch.abs(
+        pred_norm[mask] - clean_norm[mask]
+    ).mean()
+
+    p_val = psnr(
+        pred_norm.unsqueeze(0),
+        clean_norm.unsqueeze(0),
+        data_range=1.0
+    )
+
+    s_val = ssim(
+        pred_norm.unsqueeze(0),
+        clean_norm.unsqueeze(0),
+        data_range=1.0
+    )
+
+    return {
+        "flux": flux_err.item(),
+        "mae_src": source_mae.item(),
+        "psnr": p_val.item(),
+        "ssim": s_val.item(),
+    }
 
 
-def compute_metrics(pred, clean, device):
+
+def compute_metrics_1(pred, clean, device):
     pred  = pred.to(device)
     clean = clean.to(device)
     smax  = clean.max()
