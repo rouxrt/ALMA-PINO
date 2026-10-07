@@ -351,22 +351,12 @@ def make_source_mask(clean, dirty, mode="relative", threshold=0.01):
             sigma_threshold * sigmas[:, None, None]
         )
 
-        print("\nSIGMA DIAGNOSTIC")
-
-        for z in range(len(sigmas)):
-            print(
-                f"z={z:02d} | "
-                f"sigma={sigmas[z].item():.6e} | "
-                f"clean_max={clean[z].max().item():.6e} | "
-                f"clean/sigma={clean[z].max().item() / (sigmas[z].item() + 1e-12):.2f}"
-    )
-
     else:
         raise ValueError(f"Unknown mask mode: {mode}")
 
     return mask
 
-def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
+def compute_metrics_1(pred, clean, dirty, device, sigma_threshold=5.0):
 
     pred = pred.to(device)
     clean = clean.to(device)
@@ -454,7 +444,7 @@ def compute_metrics(pred, clean, dirty, device, sigma_threshold=5.0):
 
 
 
-def compute_metrics_1(pred, clean, device):
+def compute_metrics(pred, clean, dirty, device):
     pred  = pred.to(device)
     clean = clean.to(device)
     smax  = clean.max()
@@ -1889,27 +1879,29 @@ def run_benchmark(args):
             method_names.append(f"{name}+TTO")
     method_names += ["CLEAN"]
 
-    acc = {m: {"flux_2s": [], 
-               "flux_3s": [],
-               "flux_5s": [],
-               "flux_10s": [],
-               "flux_05p": [],
-               "flux_1p": [],
-               "flux_2p": [],
-               "mae_src_2s": [],
-               "mae_src_3s": [],
-               "mae_src_5s": [],
-               "mae_src_10s": [],
-               "mae_src_05p": [],
-               "mae_src_1p": [],
-               "mae_src_2p": [],
-               "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
+    acc = {m: {"flux": [], "mae_src": [], "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
+
+    # acc = {m: {"flux_2s": [], 
+    #            "flux_3s": [],
+    #            "flux_5s": [],
+    #            "flux_10s": [],
+    #            "flux_05p": [],
+    #            "flux_1p": [],
+    #            "flux_2p": [],
+    #            "mae_src_2s": [],
+    #            "mae_src_3s": [],
+    #            "mae_src_5s": [],
+    #            "mae_src_10s": [],
+    #            "mae_src_05p": [],
+    #            "mae_src_1p": [],
+    #            "mae_src_2p": [],
+    #            "psnr": [], "ssim": [], "time_ms": []} for m in method_names}
     n_valid = {m: 0 for m in method_names}
     timer = Timer(device)
 
     for sample_idx, (dirty, clean, uv_mask) in enumerate(test_loader):
-        if sample_idx == 3:
-            break
+        # if sample_idx == 5:
+        #     break
         # dirty, clean, psf: [1, C, H, W]
         dirty_s = dirty[0]   # [C, H, W] 
         clean_s = clean[0]
@@ -1989,7 +1981,7 @@ def run_benchmark(args):
     avg_metrics = {}
     for m in method_names:
         vals = acc[m]
-        n = len(vals["flux_2s"])
+        n = len(vals["flux"])
         if n > 0:
             avg_metrics[m] = {}
             for k, v_list in vals.items():
