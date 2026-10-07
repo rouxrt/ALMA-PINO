@@ -1970,7 +1970,7 @@ def run_benchmark(args):
     avg_metrics = {}
     for m in method_names:
         vals = acc[m]
-        n = len(vals["flux"])
+        n = len(vals["flux_2s"])
         if n > 0:
             avg_metrics[m] = {}
             for k, v_list in vals.items():
